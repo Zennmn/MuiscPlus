@@ -1,21 +1,21 @@
 {
   "extensionName": {
-    "message": "YouLy+",
+    "message": "Muisc+",
     "description": "Extension name"
   },
   "extensionDescription": {
-    "message": "面向 Apple Music 的 AMLL 歌詞播放器，支援 Apple 內建翻譯、本機 TTML 與可選機器翻譯"
+    "message": "為 Apple Music 強化歌詞體驗：AMLL 播放器、Apple 提供的翻譯、本機 TTML 與可選機器翻譯。"
   },
   "popupTitle": {
-    "message": "YouLy+ 設定",
+    "message": "Muisc+ 設定",
     "description": "Title shown in the popup header and page title"
   },
   "settingEnableExtension": {
-    "message": "啟用 YouLy+",
+    "message": "啟用 Muisc+",
     "description": "Label for the master enable toggle"
   },
   "settingPrimaryProvider": {
-    "message": "主要歌詞提供者",
+    "message": "偏好歌詞來源",
     "description": "Label for lyrics provider dropdown"
   },
   "settingLightweightMode": {
@@ -78,7 +78,7 @@
     "description": "Error when chrome runtime API is unavailable"
   },
   "settingsTitle": {
-    "message": "YouLy+ 設定",
+    "message": "Muisc+ 設定",
     "description": "Title shown in full settings page header and nav drawer"
   },
   "navLocalLyrics": {
@@ -86,11 +86,11 @@
     "description": "Navigation drawer label"
   },
   "descEnableExtension": {
-    "message": "全域啟用或停用擴充功能。",
+    "message": "在所有頁面啟用或停用 Muisc+。",
     "description": "Description for enable toggle"
   },
   "descWordByWord": {
-    "message": "啟用卡拉 OK 風格的逐字高亮（如果可用）。",
+    "message": "目前歌詞來源支援時，啟用卡拉 OK 式逐字標示。",
     "description": "Description for word-by-word toggle"
   },
   "categoryAppleMusic": {
@@ -180,7 +180,7 @@
     "description": "Refresh local lyrics list button"
   },
   "msgFileReadError": {
-    "message": "檔案讀取錯誤。",
+    "message": "無法讀取檔案。",
     "description": "Error when file read fails"
   },
   "msgLocalLyricsDeleted": {
@@ -273,7 +273,7 @@
     "description": "Input label"
   },
   "helperGeminiApiKey": {
-    "message": "您的 API 金鑰儲存在本機，絕不會發送到 Google Gemini API 以外的外部伺服器。",
+    "message": "API 金鑰僅儲存在本機，並只會傳送至 Google Gemini API。",
     "description": "Helper text for Gemini API key"
   },
   "labelGeminiModel": {
@@ -309,19 +309,19 @@
     "description": "Helper text"
   },
   "categoryRomanization": {
-    "message": "注音/拼音服務（針對非拉丁指令碼）",
+    "message": "音譯服務（文字轉換）",
     "description": "Category title"
   },
   "labelTransliterationTarget": {
-    "message": "音譯目標文字",
+    "message": "目標文字系統",
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "將歌詞轉換為此文字以提供發音指南（例如：英文轉日文片假名）。非拉丁字符需要 Gemini 或 OpenRouter。",
+    "message": "將歌詞轉換為所選文字系統，作為發音輔助（例如將英文轉為日文片假名）。非拉丁文字需要 Gemini 或 OpenRouter。",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google 翻譯僅支援拉丁字母（羅馬字）音譯。選擇 Gemini 或 OpenRouter 作為音譯提供商以啟用其他文字。",
+    "message": "Google 翻譯僅支援拉丁字母（羅馬字）音譯。若要使用其他文字，請選擇 Gemini 或 OpenRouter 作為音譯服務。",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -361,19 +361,19 @@
     "description": "Option in transliteration target script dropdown"
   },
   "labelRomanizationProvider": {
-    "message": "注音/拼音提供者",
+    "message": "音譯服務",
     "description": "Dropdown label"
   },
   "descRomanizationProvider": {
-    "message": "如果可用，自動從 Lyrics+ API 獲取拼音/注音。如果 Lyrics+ 未提供，則使用所選服務生成。",
+    "message": "使用拉丁字母時，優先使用歌詞自帶的音譯；否則嘗試所選服務。",
     "description": "Description for romanization provider"
   },
   "labelGeminiRomanizationModel": {
-    "message": "Gemini AI 注音/拼音模型",
+    "message": "Gemini AI 音譯模型",
     "description": "Dropdown label"
   },
   "descGeminiRomanizationModel": {
-    "message": "選擇用於注音/拼音的 Gemini AI 模型。",
+    "message": "選擇用於音譯的 Gemini AI 模型。",
     "description": "Description"
   },
   "categoryTranslationBehavior": {
@@ -385,7 +385,7 @@
     "description": "Dropdown label"
   },
   "descOverrideTranslateTarget": {
-    "message": "選擇歌詞翻譯的目標語言（預設比對應用程式/瀏覽器語言）。",
+    "message": "選擇歌詞翻譯的目標語言。預設使用瀏覽器語言。",
     "description": "Description"
   },
   "labelCustomTranslateTarget": {
@@ -465,11 +465,11 @@
     "description": "Dropdown label"
   },
   "descCacheStrategy": {
-    "message": "選擇保留最多 100 筆最近使用的歌詞與衍生結果，或關閉快取。",
+    "message": "保留最多 100 筆最近使用的歌詞，以及最多 100 筆最近使用的翻譯或音譯結果；也可以關閉快取。",
     "description": "Description"
   },
   "optionBounded": {
-    "message": "限量（最近使用 100 筆）",
+    "message": "啟用（每類快取最多 100 筆）",
     "description": "Cache strategy option"
   },
   "optionNone": {
@@ -481,7 +481,7 @@
     "description": "Label for cache usage display"
   },
   "aboutDescription": {
-    "message": "YouLy+ 專注於 Apple Music 的全螢幕 AMLL 歌詞、內建翻譯、本機 TTML 與可選機器翻譯。",
+    "message": "Muisc+ 為 Apple Music 加入 AMLL 歌詞播放器、Apple 提供的翻譯、本機 TTML 與可選機器翻譯。",
     "description": "About page description text"
   },
   "categoryLinksSupport": {
@@ -509,7 +509,7 @@
     "description": "Category title"
   },
   "descConfigManagement": {
-    "message": "將您目前的設定匯出為 JSON 檔案，或從檔案匯入以還原您的配置。",
+    "message": "將目前設定匯出為 JSON 檔案，或從檔案匯入以還原設定。",
     "description": "Description"
   },
   "buttonExport": {
@@ -539,7 +539,7 @@
     }
   },
   "msgImportSuccess": {
-    "message": "設定匯入成功！需要重新整理分頁以生效。",
+    "message": "設定已成功匯入。請重新整理頁面以套用變更。",
     "description": "Status message"
   },
   "msgImportError": {
@@ -591,7 +591,7 @@
     "description": "Setting title for downloadable offline Japanese dictionary"
   },
   "descOfflineJapaneseDict": {
-    "message": "用於準確日語注音與發音的形態分析詞典 (~17 MB)。儲存在瀏覽器本機。",
+    "message": "Kuromoji 使用的形態分析詞典（約 17 MB），可提升日語發音準確度，並儲存在瀏覽器本機。",
     "description": "Setting description for downloadable offline Japanese dictionary"
   },
   "btnDownloadDict": {
@@ -633,7 +633,7 @@
     }
   },
   "confirmDownloadJapaneseDict": {
-    "message": "是否下載日語 Kuromoji 詞典 (~17 MB)？它將儲存在瀏覽器本機以用於離線日語注音與發音。",
+    "message": "要下載日語 Kuromoji 詞典（約 17 MB）嗎？詞典會儲存在瀏覽器本機，供離線日語發音使用。",
     "description": "Confirmation prompt before downloading Japanese dictionary"
   },
   "confirmDeleteJapaneseDict": {
@@ -645,11 +645,11 @@
     "description": "Setting title for downloadable offline Arabic CaTT model"
   },
   "descOfflineArabicDict": {
-    "message": "用於恢復阿拉伯語歌詞中 Tashkeel 與準確母音的神經變音符號模型 (~74.3 MB)。儲存在瀏覽器本機。",
+    "message": "神經變音符號模型（約 74.3 MB），用於還原阿拉伯語歌詞中的 Tashkeel（變音符號）與正確母音，並儲存在瀏覽器本機。",
     "description": "Setting description for downloadable offline Arabic CaTT model"
   },
   "confirmDownloadArabicDict": {
-    "message": "是否下載阿拉伯語 CaTT 變音符號模型 (~74.3 MB)？它將儲存在瀏覽器本機以用於離線阿拉伯語發音。",
+    "message": "要下載阿拉伯語 CaTT 變音符號模型（約 74.3 MB）嗎？模型會儲存在瀏覽器本機，供離線阿拉伯語發音使用。",
     "description": "Confirmation prompt before downloading Arabic CaTT model"
   },
   "confirmDeleteArabicDict": {
@@ -833,7 +833,7 @@
     "message": "填寫相容 Chat Completions 的服務位址，可填基礎位址或完整介面位址。"
   },
   "descCustomLLMKey": {
-    "message": "金鑰儲存在本機，僅傳送至你設定的 API 位址；無需金鑰的本機服務可留空。"
+    "message": "金鑰僅儲存在本機，並只會傳送至所設定的 API 位址。若服務不需要金鑰，請留空。"
   },
   "labelCustomLLMModel": {
     "message": "模型名稱"
@@ -866,7 +866,7 @@
     "message": "播放器字體檔案"
   },
   "descPlayerFont": {
-    "message": "匯入 TTF、OTF、WOFF 或 WOFF2 字體檔案，統一替換播放器全部文字。字體儲存在擴充功能本機，無需安裝到系統，單檔最大 64 MB。"
+    "message": "匯入 TTF、OTF、WOFF 或 WOFF2 字型檔，以統一取代播放器中的文字。字型儲存在擴充功能本機，無需安裝到系統，檔案上限為 64 MB。"
   },
   "buttonDefaultPlayerFont": {
     "message": "恢復預設字體"
@@ -926,7 +926,7 @@
     "message": "Apple Music"
   },
   "msgAppleRestart": {
-    "message": "這項變更需要重新載入 Apple Music 才會生效。"
+    "message": "請重新載入 Apple Music 以套用此變更。"
   },
   "buttonReloadAppleMusic": {
     "message": "重新載入 Apple Music"
@@ -968,13 +968,13 @@
     "message": "播放器字型"
   },
   "sourcesAppleOnlyNote": {
-    "message": "YouLy+ 現在僅支援 Apple Music。以下來源順序適用於所有歌曲。"
+    "message": "Muisc+ 僅支援 Apple Music。以下順序為預設順序；本機 TTML 或在播放器中為目前歌曲選擇的來源可能會覆寫它。"
   },
   "categoryAppleSourceOrder": {
     "message": "Apple Music 歌詞來源順序"
   },
   "descAppleSourceOrder": {
-    "message": "預設依 AMLL、LunaBeat、AmLyrics、Apple Music 原生歌詞的順序尋找。Apple Music 始終保留在最後。"
+    "message": "Muisc+ 會依此順序嘗試歌詞來源，Apple Music 原生歌詞一律排在最後。"
   },
   "sourceNativePinned": {
     "message": "始終作為最後的備援來源"
@@ -986,7 +986,7 @@
     "message": "無法儲存歌詞來源順序。"
   },
   "localLyricsImportGuideTitle": {
-    "message": "請從歌曲播放器匯入 TTML"
+    "message": "播放歌曲時匯入 TTML"
   },
   "localLyricsImportStep1": {
     "message": "在目前 Apple Music 歌曲中開啟全螢幕歌詞播放器。"
@@ -995,16 +995,16 @@
     "message": "開啟播放器選單並選擇「匯入 TTML」。"
   },
   "localLyricsImportStep3": {
-    "message": "檔案會儲存到該歌曲，之後載入時會自動使用。"
+    "message": "檔案會儲存至該歌曲，並在下次載入時自動使用。"
   },
   "localLyricsOverrideNote": {
-    "message": "符合歌曲的本機 TTML 會優先使用。在此刪除後會恢復自動來源。"
+    "message": "自動選擇來源時，相符歌曲會優先使用本機 TTML。在此刪除後可使用其他來源。"
   },
   "categoryLocalLyricsLibrary": {
     "message": "本機 TTML 歌詞庫"
   },
   "translationApplePolicyNote": {
-    "message": "只有當 Apple Music 提供原文歌詞，但歌曲沒有內建翻譯時，才會執行機器翻譯。Apple 提供的翻譯會保留。"
+    "message": "只有在 Apple Music 提供原文歌詞且歌曲沒有內建翻譯時，才會使用機器翻譯。Apple 提供的翻譯會保留。"
   },
   "msgPlaybackSettingsSaved": {
     "message": "播放設定已儲存並套用到 Apple Music。"
@@ -1049,7 +1049,7 @@
     "message": "本機 TTML 歌詞庫已重新整理。"
   },
   "msgImportNoValidSettings": {
-    "message": "檔案中沒有受支援的 YouLy+ 設定。"
+    "message": "檔案中沒有受支援的 Muisc+ 設定。"
   },
   "labelBackupRestore": {
     "message": "備份與還原設定"
@@ -1061,13 +1061,13 @@
     "message": "問題與說明"
   },
   "aboutAppleDescription": {
-    "message": "在原始 AMLL 播放器中顯示 Apple Music 歌詞，支援 Apple 內建翻譯、本機 TTML 與可選機器翻譯。"
+    "message": "Muisc+ 為 Apple Music 歌詞加入原始 AMLL 播放器、Apple 提供的翻譯、本機 TTML 與可選機器翻譯。"
   },
   "upstreamAttribution": {
     "message": "基於 AMLL 與開源歌詞來源建置。上游致謝與 AGPL-3.0-only 授權可在程式碼倉庫中查看。"
   },
   "footerAppleOnly": {
-    "message": "YouLy+ · Apple Music 歌詞"
+    "message": "Muisc+ · Apple Music 歌詞"
   },
   "linkTTMLTranslationGuide": {
     "message": "TTML 翻譯指南"
@@ -1079,10 +1079,10 @@
     "message": "快取與儲存"
   },
   "popupAppleDescription": {
-    "message": "Apple Music 歌詞、外觀與快取。"
+    "message": "管理 Apple Music 歌詞、外觀與快取。"
   },
   "popupFullSettingsHint": {
-    "message": "歌詞來源、本機 TTML、翻譯、字型及進階選項位於完整設定頁。"
+    "message": "在完整設定頁中管理歌詞來源、本機 TTML、翻譯、字型與進階選項。"
   },
   "playerClose": {
     "message": "關閉"

@@ -14,7 +14,7 @@ import {
     downloadDictionary,
     deleteDictionary
 } from '../lib/settingsManager.js';
-import { initRipple, initSwitches, createSvgIcon } from '../lib/uiUtils.js';
+import { initSwitches, createSvgIcon } from '../lib/uiUtils.js';
 import { APPLE_LYRICS_ORDER, APPLE_LYRICS_NAMES, normalizeAppleLyricsOrder } from '../lib/appleLyricsSources.js';
 import { CustomLLMProvider, customLLMEndpoint } from '../background/services/translation/providers/CustomLLMProvider.js';
 import { playerFontFamily } from '../lib/playerFont.js';
@@ -802,7 +802,7 @@ function exportSettings() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'youlyplus-apple-settings-' + new Date().toISOString().slice(0, 10) + '.json';
+        link.download = 'muiscplus-settings-' + new Date().toISOString().slice(0, 10) + '.json';
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -875,7 +875,7 @@ function importSettings(event) {
                 ? parsed.settings
                 : parsed;
             const imported = sanitizeImportedSettings(source || {});
-            if (!Object.keys(imported).length) throw new Error(t('msgImportNoValidSettings', 'This file contains no supported YouLy+ settings.'));
+            if (!Object.keys(imported).length) throw new Error(t('msgImportNoValidSettings', 'This file contains no supported Muisc+ settings.'));
             currentSettings = updateSettings(imported);
             await saveSettings();
             updateUI(getSettings());
@@ -979,7 +979,6 @@ function setVersion() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    initRipple();
     initSwitches();
     initNavigation();
     bindProviderOrderInteractions();

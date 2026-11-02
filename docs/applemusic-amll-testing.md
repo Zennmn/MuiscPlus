@@ -1,12 +1,14 @@
-# Apple Music 播放器使用与手动检查
+# Muisc+ 播放器使用与手动检查
+
+本指南说明如何安装 Muisc+、操作播放器，以及进行手动验证。
 
 ## 安装
 
-1. 在项目目录运行 `npm ci`（首次安装依赖），随后运行 `npm run package:chrome`。
-2. 暂时关闭商店版或其他版本的 YouLy+，在 Chrome / Edge 扩展页开启开发者模式，加载 `dist/youlyplus-amll-chrome`。
+1. 首次使用需要在项目目录运行 `npm ci` 安装依赖，随后运行 `npm run package:chrome`。
+2. 停用原 YouLy+ 或其他版本的扩展，在 Chrome 或 Edge 的扩展管理页开启开发者模式，加载 `dist/youlyplus-amll-chrome`。
 3. 刷新 [Apple Music 网页](https://music.apple.com/)，播放歌曲并打开展开/全屏歌词播放页。
 
-每次更新后重新打包、重载扩展并刷新网页。`npm run dev` 只提供模拟预览，不播放真实音频。本项目现在仅支持 Apple Music；旧 YouTube Music、Tidal、字幕和 SponsorBlock 链路已经移除。
+每次更新源码后重新打包、重载扩展并刷新网页。`npm run dev` 只提供模拟预览，不播放真实音频。当前版本仅支持 Apple Music；旧 YouTube Music、Tidal、字幕和 SponsorBlock 链路已经移除。
 
 ## 播放器和设置
 

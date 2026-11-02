@@ -188,7 +188,7 @@ function showNativePlayer() {
     const button = document.createElement('button');
     button.id = 'lyplus-amll-restore';
     button.type = 'button';
-    button.textContent = 'YouLy+ · AMLL';
+    button.textContent = 'Muisc+ · AMLL';
     button.addEventListener('click', () => { nativeMode = false; button.remove(); mountAMLL(); });
     amllModal.appendChild(button);
 }
@@ -230,7 +230,7 @@ function mountAMLL() {
     const host = document.createElement('iframe');
     host.id = 'lyplus-amll-root';
     host.setAttribute('role', 'region');
-    host.setAttribute('aria-label', 'YouLy+ Apple Music player');
+    host.setAttribute('aria-label', 'Muisc+ player');
     modal.appendChild(host);
     amllHost = host;
     const stylesReady = injectPlatformCSS();

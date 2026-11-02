@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="settingsTitle">YouLy+ Settings</title>
+    <title data-i18n="settingsTitle">Muisc+ Settings</title>
     <link href="../lib/material3.css" rel="stylesheet" />
     <link rel="stylesheet" type="text/css" href="ui.css">
     <script src="../lib/i18n.js" defer></script>
@@ -13,10 +13,8 @@
 <body>
     <aside class="navigation-drawer">
         <header class="drawer-header">
-            <svg class="icon-svg logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 3v10.55A4 4 0 1 0 14 17V7h5V3h-7Z" />
-            </svg>
-            <h1 class="drawer-title" data-i18n="settingsTitle">YouLy+ Settings</h1>
+            <img class="logo-icon" src="../../icons/logo.png" alt="" aria-hidden="true">
+            <h1 class="drawer-title" data-i18n="settingsTitle">Muisc+ Settings</h1>
         </header>
         <nav class="drawer-nav">
             <div class="nav-category" data-i18n="navCatAppleMusicService">Apple Music</div>
@@ -106,7 +104,7 @@
                     <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
                 </svg>
             </button>
-            <h1 class="mobile-title" data-i18n="settingsTitle">YouLy+ Settings</h1>
+            <h1 class="mobile-title" data-i18n="settingsTitle">Muisc+ Settings</h1>
         </header>
 
         <div id="reload-notification" class="reload-notification" role="status">
@@ -125,7 +123,7 @@
                     <div class="settings-group">
                         <div class="setting-item has-switch">
                             <div class="setting-info">
-                                <span class="setting-title" data-i18n="settingEnableExtension">Enable YouLy+</span>
+                                <span class="setting-title" data-i18n="settingEnableExtension">Enable Muisc+</span>
                                 <span class="setting-description" data-i18n="descEnableExtension">Globally enable or disable the extension.</span>
                             </div>
                             <div class="setting-control">
@@ -267,7 +265,7 @@
 
             <section class="settings-card" id="sources">
                 <h2 class="card-title" data-i18n="navLyricsSourcesApple">Lyrics sources</h2>
-                <p class="section-intro" data-i18n="sourcesAppleOnlyNote">YouLy+ now supports Apple Music only. This source order applies to every song.</p>
+                <p class="section-intro" data-i18n="sourcesAppleOnlyNote">Choose the order in which Muisc+ searches for lyrics on Apple Music.</p>
 
                 <div class="settings-category">
                     <h3 class="category-title" data-i18n="categoryAppleSourceOrder">Apple Music lyrics source order</h3>
@@ -304,7 +302,7 @@
                         <li data-i18n="localLyricsImportStep2">Open the player menu and choose Import TTML.</li>
                         <li data-i18n="localLyricsImportStep3">The file is saved for that song and filled in automatically on later loads.</li>
                     </ol>
-                    <p data-i18n="localLyricsOverrideNote">Local TTML takes priority for the matching song. Delete it here to return to automatic sources.</p>
+                    <p data-i18n="localLyricsOverrideNote">In automatic mode, local TTML takes priority for the matching song. Delete it here to use other sources.</p>
                     <a class="inline-link" href="https://github.com/Zennmn/YouLyPlus/blob/main/docs/ttml-translation.md" target="_blank" rel="noopener noreferrer" data-i18n="linkTTMLTranslationGuide">TTML translation guide</a>
                 </div>
 
@@ -1210,7 +1208,7 @@
                     <div class="settings-group">
                         <div class="setting-item full-width about-apple-card">
                             <div class="setting-info">
-                                <span class="setting-title">YouLy+ <span class="version">Version unknown</span></span>
+                                <span class="setting-title">Muisc+ <span class="version">Version unknown</span></span>
                                 <span class="setting-description" data-i18n="aboutAppleDescription">Apple Music lyrics with the original AMLL player, Apple-provided translations, local TTML, and optional machine translation.</span>
                                 <span class="setting-description" data-i18n="upstreamAttribution">Built on AMLL and open-source lyric sources. Upstream acknowledgements and the AGPL-3.0-only license are available in the repository.</span>
                             </div>
@@ -1225,7 +1223,7 @@
             </section>
 
             <footer class="content-footer">
-                <p data-i18n="footerAppleOnly">YouLy+ · Apple Music lyrics</p>
+                <p data-i18n="footerAppleOnly">Muisc+ · Apple Music lyrics</p>
             </footer>
         </div>
     </main>

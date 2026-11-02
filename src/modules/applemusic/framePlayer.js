@@ -102,7 +102,7 @@
         window.addEventListener('message', onMessage);
         frame.addEventListener('load', onLoad);
         frame.addEventListener('error', fail);
-        frame.title = 'YouLy+ · AMLL';
+        frame.title = 'Muisc+ · AMLL';
         frame.src = frameURL.href;
         return {
             updateSong: info => call('updateSong', songView(info)), displayLyrics,

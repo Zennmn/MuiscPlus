@@ -1,6 +1,6 @@
 {
   "extensionName": {
-    "message": "YouLy+",
+    "message": "Muisc+",
     "description": "Extension name"
   },
   "extensionDescription": {
@@ -8,11 +8,11 @@
     "description": "Extension description"
   },
   "popupTitle": {
-    "message": "Налаштування YouLy+",
+    "message": "Налаштування Muisc+",
     "description": "Title shown in the popup header and page title"
   },
   "settingEnableExtension": {
-    "message": "Увімкнути YouLy+",
+    "message": "Увімкнути Muisc+",
     "description": "Label for the master enable toggle"
   },
   "settingPrimaryProvider": {
@@ -80,7 +80,7 @@
     "description": "Error when chrome runtime API is unavailable"
   },
   "settingsTitle": {
-    "message": "Налаштування YouLy+",
+    "message": "Налаштування Muisc+",
     "description": "Title shown in full settings page header and nav drawer"
   },
   "navLocalLyrics": {
@@ -459,7 +459,7 @@
     "description": "Label for cache usage display"
   },
   "aboutDescription": {
-    "message": "YouLy+ brings AMLL lyrics and Apple-provided translations to Apple Music, with local TTML and optional machine translation.",
+    "message": "Muisc+ brings AMLL lyrics and Apple-provided translations to Apple Music, with local TTML and optional machine translation.",
     "description": "About page description text"
   },
   "categoryLinksSupport": {
@@ -877,7 +877,7 @@
     "message": "Player font"
   },
   "sourcesAppleOnlyNote": {
-    "message": "YouLy+ now supports Apple Music only. This source order applies to every song."
+    "message": "Muisc+ now supports Apple Music only. This source order applies to every song."
   },
   "categoryAppleSourceOrder": {
     "message": "Apple Music lyrics source order"
@@ -958,7 +958,7 @@
     "message": "Local TTML library refreshed."
   },
   "msgImportNoValidSettings": {
-    "message": "This file contains no supported YouLy+ settings."
+    "message": "This file contains no supported Muisc+ settings."
   },
   "labelBackupRestore": {
     "message": "Backup and restore settings"
@@ -976,7 +976,7 @@
     "message": "Built on AMLL and open-source lyric sources. Upstream acknowledgements and the AGPL-3.0-only license are available in the repository."
   },
   "footerAppleOnly": {
-    "message": "YouLy+ · Apple Music lyrics"
+    "message": "Muisc+ · Apple Music lyrics"
   },
   "linkTTMLTranslationGuide": {
     "message": "TTML translation guide"

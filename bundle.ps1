@@ -11,7 +11,7 @@ try {
         else { & node scripts/package-chrome.mjs }
         if ($LASTEXITCODE -ne 0) { throw "Packaging failed: $releaseBrowser" }
         $releaseFolder = Join-Path $PSScriptRoot "dist/youlyplus-amll-$releaseBrowser"
-        $releaseZip = Join-Path $PSScriptRoot "dist/youlyplus-v$releaseVersion-$releaseBrowser.zip"
+        $releaseZip = Join-Path $PSScriptRoot "dist/muiscplus-v$releaseVersion-$releaseBrowser.zip"
         Compress-Archive -Path (Join-Path $releaseFolder '*') -DestinationPath $releaseZip -Force
         Write-Host $releaseZip
     }

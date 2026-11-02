@@ -287,7 +287,7 @@ export function createPlayer(host, options = {}) {
   function exportDiagnostics() {
     if (!diagnosticReport) return;
     try {
-      downloadFile(new Blob([JSON.stringify(diagnosticReport, null, 2)], { type: 'application/json' }), `youlyplus-performance-${Date.now()}.json`);
+      downloadFile(new Blob([JSON.stringify(diagnosticReport, null, 2)], { type: 'application/json' }), `muiscplus-performance-${Date.now()}.json`);
     } catch (error) { toast(error?.message || label('playerExportFailed', 'Unable to export diagnostics')); }
   }
   function downloadFile(blob, filename) {

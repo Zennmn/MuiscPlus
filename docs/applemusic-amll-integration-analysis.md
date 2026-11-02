@@ -1,6 +1,8 @@
 # Apple Music 网页播放器接入 AMLL 的可行性分析（历史方案）
 
-> 本文记录最初接入前的结构和决策，含已移除的多平台路径，不是当前功能说明。当前使用请参阅 [播放器指南](applemusic-amll-testing.md) 与根 README。
+> 本文记录最初接入前的结构和决策，含已移除的多平台路径，不是当前功能说明。当前使用请参阅 [Muisc+ 播放器指南](applemusic-amll-testing.md) 与 [项目说明](../readme.md)。
+>
+> **名称说明：** 文中的 `YouLyPlus`／`YouLy+` 是方案撰写时使用的项目名称；相关代码路径、消息名、仓库和许可归属均按原文保留。项目当前对外名称为 Muisc+。
 
 分析日期：2026-10-14。分析对象为本地 YouLyPlus 和相邻目录 applemusic-like-lyrics；未修改运行代码、安装依赖或执行登录后的网页联调。
 

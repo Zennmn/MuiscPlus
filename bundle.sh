@@ -6,8 +6,8 @@ VERSION=$(node --input-type=module -e "import fs from 'node:fs'; process.stdout.
 for BROWSER in chrome firefox; do
   if [ "$BROWSER" = firefox ]; then node scripts/package-chrome.mjs --firefox
   else node scripts/package-chrome.mjs; fi
-  DESTINATION="dist/youlyplus-v${VERSION}-${BROWSER}.zip"
+  DESTINATION="dist/muiscplus-v${VERSION}-${BROWSER}.zip"
   rm -f -- "$DESTINATION"
-  (cd "dist/youlyplus-amll-${BROWSER}" && zip -qr "../youlyplus-v${VERSION}-${BROWSER}.zip" .)
+  (cd "dist/youlyplus-amll-${BROWSER}" && zip -qr "../muiscplus-v${VERSION}-${BROWSER}.zip" .)
   echo "$DESTINATION"
 done

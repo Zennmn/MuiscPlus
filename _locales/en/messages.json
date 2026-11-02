@@ -1,22 +1,22 @@
 {
   "extensionName": {
-    "message": "YouLy+",
+    "message": "Muisc+",
     "description": "Extension name"
   },
   "extensionDescription": {
-    "message": "AMLL lyrics player for Apple Music with Apple-provided translations, local TTML and optional machine translation",
+    "message": "Enhanced lyrics for Apple Music with the AMLL player, Apple-provided translations, local TTML, and optional machine translation.",
     "description": "Extension description"
   },
   "popupTitle": {
-    "message": "YouLy+ Settings",
+    "message": "Muisc+ Settings",
     "description": "Title shown in the popup header and page title"
   },
   "settingEnableExtension": {
-    "message": "Enable YouLy+",
+    "message": "Enable Muisc+",
     "description": "Label for the master enable toggle"
   },
   "settingPrimaryProvider": {
-    "message": "Primary Lyrics Provider",
+    "message": "Preferred lyrics source",
     "description": "Label for lyrics provider dropdown"
   },
   "settingLightweightMode": {
@@ -80,7 +80,7 @@
     "description": "Error when chrome runtime API is unavailable"
   },
   "settingsTitle": {
-    "message": "YouLy+ Settings",
+    "message": "Muisc+ Settings",
     "description": "Title shown in full settings page header and nav drawer"
   },
   "navLocalLyrics": {
@@ -88,11 +88,11 @@
     "description": "Navigation drawer label"
   },
   "descEnableExtension": {
-    "message": "Globally enable or disable the extension.",
+    "message": "Turn Muisc+ on or off everywhere.",
     "description": "Description for enable toggle"
   },
   "descWordByWord": {
-    "message": "Enable karaoke-style word highlighting if available.",
+    "message": "Enable karaoke-style word highlighting when the current lyrics source supports it.",
     "description": "Description for word-by-word toggle"
   },
   "categoryAppleMusic": {
@@ -182,7 +182,7 @@
     "description": "Refresh local lyrics list button"
   },
   "msgFileReadError": {
-    "message": "Error reading file.",
+    "message": "Unable to read the file.",
     "description": "Error when file read fails"
   },
   "msgLocalLyricsDeleted": {
@@ -275,7 +275,7 @@
     "description": "Input label"
   },
   "helperGeminiApiKey": {
-    "message": "Your API key is stored locally and never sent to external servers other than Google's Gemini API.",
+    "message": "Your API key is stored locally and sent only to Google's Gemini API.",
     "description": "Helper text for Gemini API key"
   },
   "labelGeminiModel": {
@@ -311,19 +311,19 @@
     "description": "Helper text"
   },
   "categoryRomanization": {
-    "message": "Transliteration Service (Script Conversion)",
+    "message": "Transliteration (script conversion)",
     "description": "Category title"
   },
   "labelTransliterationTarget": {
-    "message": "Transliteration Target Script",
+    "message": "Target writing system",
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Convert lyrics into this script for pronunciation guides (e.g., English to Japanese Katakana). Non-Latin targets require Gemini or OpenRouter.",
+    "message": "Convert lyrics to the selected writing system as a pronunciation aid (for example, English to Japanese Katakana). Non-Latin scripts require Gemini or OpenRouter.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate only supports Latin (romaji) transliteration. Select Gemini or OpenRouter as the Transliteration Provider to enable other scripts.",
+    "message": "Google Translate supports only Latin (romaji) transliteration. Choose Gemini or OpenRouter as the transliteration provider to use other scripts.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -363,15 +363,15 @@
     "description": "Option in transliteration target script dropdown"
   },
   "labelRomanizationProvider": {
-    "message": "Transliteration Provider",
+    "message": "Transliteration provider",
     "description": "Dropdown label"
   },
   "descRomanizationProvider": {
-    "message": "Automatically fetches transliteration from the Lyrics+ API when available. If not provided by Lyrics+, it falls back to generating transliteration using the selected service.",
+    "message": "For Latin script, uses transliteration included in the lyrics when available; otherwise, it tries the selected service.",
     "description": "Description for transliteration provider"
   },
   "labelGeminiRomanizationModel": {
-    "message": "Gemini AI Transliteration Model",
+    "message": "Gemini AI transliteration model",
     "description": "Dropdown label"
   },
   "descGeminiRomanizationModel": {
@@ -387,7 +387,7 @@
     "description": "Dropdown label"
   },
   "descOverrideTranslateTarget": {
-    "message": "Choose target language for lyrics translation (defaults to web player language).",
+    "message": "Choose the language for lyric translations. The browser language is used by default.",
     "description": "Description"
   },
   "labelCustomTranslateTarget": {
@@ -467,11 +467,11 @@
     "description": "Dropdown label"
   },
   "descCacheStrategy": {
-    "message": "Choose whether to keep up to 100 recently used lyrics and derived results, or disable caching.",
+    "message": "Keep up to 100 recent lyric entries plus up to 100 recent translation or transliteration results, or turn caching off.",
     "description": "Description"
   },
   "optionBounded": {
-    "message": "Bounded (100 recent entries)",
+    "message": "Enabled (up to 100 per library)",
     "description": "Cache strategy option"
   },
   "optionNone": {
@@ -483,7 +483,7 @@
     "description": "Label for cache usage display"
   },
   "aboutDescription": {
-    "message": "YouLy+ brings AMLL lyrics and Apple-provided translations to Apple Music, with local TTML and optional machine translation.",
+    "message": "Muisc+ enhances Apple Music with the AMLL lyrics player, Apple-provided translations, local TTML, and optional machine translation.",
     "description": "About page description text"
   },
   "categoryLinksSupport": {
@@ -511,7 +511,7 @@
     "description": "Category title"
   },
   "descConfigManagement": {
-    "message": "Export your current settings to a JSON file, or import from a file to restore your configuration.",
+    "message": "Export the current settings to a JSON file, or import a file to restore them.",
     "description": "Description"
   },
   "buttonExport": {
@@ -541,7 +541,7 @@
     }
   },
   "msgImportSuccess": {
-    "message": "Settings imported successfully! Reload required.",
+    "message": "Settings imported successfully. Reload the page to apply them.",
     "description": "Status message"
   },
   "msgImportError": {
@@ -593,7 +593,7 @@
     "description": "Setting title for downloadable offline Japanese dictionary"
   },
   "descOfflineJapaneseDict": {
-    "message": "Morphological analyzer dictionary (~17 MB) for accurate Japanese pronunciation. Stored locally in browser.",
+    "message": "Kuromoji's morphological analyzer dictionary (~17 MB) for more accurate Japanese pronunciation. Stored locally in your browser.",
     "description": "Setting description for downloadable offline Japanese dictionary"
   },
   "btnDownloadDict": {
@@ -635,7 +635,7 @@
     }
   },
   "confirmDownloadJapaneseDict": {
-    "message": "Download the Japanese Kuromoji dictionary (~17 MB)? It will be stored locally in your browser for offline Japanese pronunciation.",
+    "message": "Download the Japanese Kuromoji dictionary (~17 MB)? It will be stored in your browser for offline Japanese pronunciation.",
     "description": "Confirmation prompt before downloading Japanese dictionary"
   },
   "confirmDeleteJapaneseDict": {
@@ -647,11 +647,11 @@
     "description": "Setting title for downloadable offline Arabic CaTT model"
   },
   "descOfflineArabicDict": {
-    "message": "Neural diacritizer model (~74.3 MB) for restoring Tashkeel and accurate vowels in Arabic lyrics. Stored locally in browser.",
+    "message": "Neural diacritizer model (~74.3 MB) that restores Tashkeel and accurate vowels in Arabic lyrics. Stored locally in your browser.",
     "description": "Setting description for downloadable offline Arabic CaTT model"
   },
   "confirmDownloadArabicDict": {
-    "message": "Download the Arabic CaTT diacritizer model (~74.3 MB)? It will be stored locally in your browser for offline Arabic pronunciation.",
+    "message": "Download the Arabic CaTT diacritizer model (~74.3 MB)? It will be stored in your browser for offline Arabic pronunciation.",
     "description": "Confirmation prompt before downloading Arabic CaTT model"
   },
   "confirmDeleteArabicDict": {
@@ -835,7 +835,7 @@
     "message": "Use a Chat Completions compatible base URL or full endpoint."
   },
   "descCustomLLMKey": {
-    "message": "Stored locally and sent only to your configured API address. Leave blank if no key is needed."
+    "message": "The key is stored locally and sent only to the API address you configure. Leave it blank if the service does not require one."
   },
   "labelCustomLLMModel": {
     "message": "Model name"
@@ -868,7 +868,7 @@
     "message": "Player font file"
   },
   "descPlayerFont": {
-    "message": "Import a TTF, OTF, WOFF or WOFF2 file to replace all player text. Stored locally in the extension; no system installation needed. Maximum 64 MB."
+    "message": "Import a TTF, OTF, WOFF, or WOFF2 file to replace all player text. Fonts are stored locally in the extension; no system installation is needed. Maximum file size: 64 MB."
   },
   "buttonDefaultPlayerFont": {
     "message": "Use default font"
@@ -928,7 +928,7 @@
     "message": "Apple Music"
   },
   "msgAppleRestart": {
-    "message": "Apple Music needs a reload to apply this change."
+    "message": "Reload Apple Music to apply this change."
   },
   "buttonReloadAppleMusic": {
     "message": "Reload Apple Music"
@@ -970,13 +970,13 @@
     "message": "Player font"
   },
   "sourcesAppleOnlyNote": {
-    "message": "YouLy+ now supports Apple Music only. This source order applies to every song."
+    "message": "Muisc+ works with Apple Music only. The order below is the default; local TTML and a source chosen in the player can override it for the current song."
   },
   "categoryAppleSourceOrder": {
     "message": "Apple Music lyrics source order"
   },
   "descAppleSourceOrder": {
-    "message": "AMLL is tried first by default, then LunaBeat, AmLyrics, and Apple Music's native lyrics. Apple Music always stays last."
+    "message": "Muisc+ tries these lyrics sources in order. Apple Music's native lyrics always stay last."
   },
   "sourceNativePinned": {
     "message": "Always used as the final fallback"
@@ -988,7 +988,7 @@
     "message": "Could not save the lyrics source order."
   },
   "localLyricsImportGuideTitle": {
-    "message": "Import TTML from the song player"
+    "message": "Import TTML while viewing a song"
   },
   "localLyricsImportStep1": {
     "message": "Open the current Apple Music song in the fullscreen lyrics player."
@@ -997,16 +997,16 @@
     "message": "Open the player menu and choose Import TTML."
   },
   "localLyricsImportStep3": {
-    "message": "The file is saved for that song and filled in automatically on later loads."
+    "message": "The file is saved for that song and loaded automatically next time."
   },
   "localLyricsOverrideNote": {
-    "message": "Local TTML takes priority for the matching song. Delete it here to return to automatic sources."
+    "message": "In automatic mode, local TTML takes priority for the matching song. Delete it here to use other sources."
   },
   "categoryLocalLyricsLibrary": {
     "message": "Local TTML library"
   },
   "translationApplePolicyNote": {
-    "message": "Machine translation runs only for Apple Music's original lyrics when a track has no built-in translation. Apple-provided translations are preserved."
+    "message": "Machine translation is used only when Apple Music provides original lyrics without a built-in translation. Apple-provided translations are kept."
   },
   "msgPlaybackSettingsSaved": {
     "message": "Playback settings saved and applied to Apple Music."
@@ -1051,7 +1051,7 @@
     "message": "Local TTML library refreshed."
   },
   "msgImportNoValidSettings": {
-    "message": "This file contains no supported YouLy+ settings."
+    "message": "This file contains no supported Muisc+ settings."
   },
   "labelBackupRestore": {
     "message": "Backup and restore settings"
@@ -1063,13 +1063,13 @@
     "message": "Issues & help"
   },
   "aboutAppleDescription": {
-    "message": "Apple Music lyrics with the original AMLL player, Apple-provided translations, local TTML, and optional machine translation."
+    "message": "Muisc+ adds the original AMLL player, Apple-provided translations, local TTML, and optional machine translation to Apple Music lyrics."
   },
   "upstreamAttribution": {
     "message": "Built on AMLL and open-source lyric sources. Upstream acknowledgements and the AGPL-3.0-only license are available in the repository."
   },
   "footerAppleOnly": {
-    "message": "YouLy+ · Apple Music lyrics"
+    "message": "Muisc+ · Apple Music lyrics"
   },
   "linkTTMLTranslationGuide": {
     "message": "TTML translation guide"
@@ -1081,10 +1081,10 @@
     "message": "Cache & storage"
   },
   "popupAppleDescription": {
-    "message": "Apple Music lyrics, appearance and cache."
+    "message": "Manage Apple Music lyrics, appearance, and cache."
   },
   "popupFullSettingsHint": {
-    "message": "Sources, local TTML, translation, fonts and advanced options are in the full settings page."
+    "message": "Manage lyrics sources, local TTML, translation, fonts, and advanced options on the full settings page."
   },
   "playerClose": {
     "message": "Close"

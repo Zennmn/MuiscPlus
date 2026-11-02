@@ -6,7 +6,7 @@ import {
     clearCache,
     setupSettingsMessageListener
 } from '../lib/settingsManager.js';
-import { initRipple, initSwitches, showSnackbar } from '../lib/uiUtils.js';
+import { initSwitches, showSnackbar } from '../lib/uiUtils.js';
 
 const t = (key, fallback = '') => {
     try {
@@ -108,7 +108,6 @@ window.addEventListener('YOUPLUS_SETTINGS_SAVE_FAILED', () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    initRipple();
     initSwitches();
     initTabs();
     initRowClickListeners();
