@@ -20,6 +20,12 @@
 
 ## 安装
 
+从 [Releases](https://github.com/Zennmn/MuiscPlus/releases/latest) 下载并解压 Chrome 安装包。在 Chrome 或 Edge 的扩展管理页开启开发者模式，选择“加载已解压的扩展程序”，打开解压后的文件夹，然后刷新 Apple Music 网页。
+
+如果已安装其他版本，请先停用旧版。
+
+### 从源码构建
+
 需要 Node.js 20.19+（20.x）或 22.12+、npm 和 JDK 21。首次打包会下载 Gradle 和界面依赖。在终端中运行：
 
 ```sh
@@ -29,9 +35,7 @@ npm ci
 npm run package:chrome
 ```
 
-在 Chrome 或 Edge 的扩展管理页开启开发者模式，选择“加载已解压的扩展程序”，打开 `dist/youlyplus-amll-chrome`，然后刷新 Apple Music 网页。
-
-如果已安装其他版本，请先停用旧版。
+构建完成后加载 `dist/youlyplus-amll-chrome`。
 
 ## 开发
 
