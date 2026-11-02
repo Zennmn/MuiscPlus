@@ -5,8 +5,7 @@
   "version": "5.0.0",
   "description": "__MSG_extensionDescription__",
   "permissions": [
-    "storage",
-    "offscreen"
+    "storage"
   ],
   "host_permissions": [
     "*://*.music.apple.com/*",

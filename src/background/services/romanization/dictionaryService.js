@@ -1,21 +1,17 @@
 /**
  * Dictionary Service for Offline Romanization.
- * Manages the offline Kuromoji dictionary and CaTT Arabic model in IndexedDB.
+ * Manages the offline Kuromoji dictionary in IndexedDB.
  * Dictionaries are ONLY downloaded upon explicit user action in Settings.
  */
 
 import { dictionaryDB } from '../../storage/database.js';
 import { kuromoji } from '../../../lib/kuromoji.js';
-import { cattDiacritizer } from './cattDiacritizer.js';
 
 const KUROMOJI_FILES = [
   'base.dat.gz', 'check.dat.gz', 'tid.dat.gz', 'tid_pos.dat.gz', 'tid_map.dat.gz',
   'cc.dat.gz', 'unk.dat.gz', 'unk_pos.dat.gz', 'unk_map.dat.gz', 'unk_char.dat.gz',
   'unk_compat.dat.gz', 'unk_invoke.dat.gz'
 ];
-
-const CATT_ENCODER_URL = 'https://github.com/ibratabian17/download-mirror/releases/download/arabic-roman/arabic_tashkeel_catt_encoder.onnx';
-const CATT_DECODER_URL = 'https://github.com/ibratabian17/download-mirror/releases/download/arabic-roman/arabic_tashkeel_catt_decoder.onnx';
 
 class DictionaryService {
   constructor() {
@@ -88,85 +84,6 @@ class DictionaryService {
     await dictionaryDB.delete('kuromoji_meta').catch(() => {});
     this.kuromojiTokenizer = null;
     return { success: true };
-  }
-
-  /**
-   * Checks if the CaTT Arabic diacritizer model is installed in IndexedDB.
-   */
-  async getCattStatus() {
-    try {
-      const meta = await dictionaryDB.get('catt_meta');
-      if (meta && meta.installed) {
-        return { installed: true, timestamp: meta.timestamp, sizeMB: meta.sizeMB || '74.3' };
-      }
-      return { installed: false };
-    } catch (e) {
-      return { installed: false };
-    }
-  }
-
-  getRawiStatus() {
-    return this.getCattStatus();
-  }
-
-  /**
-   * Downloads the CaTT ONNX encoder and decoder models upon user confirmation.
-   */
-  async downloadCatt() {
-    const [encoderRes, decoderRes] = await Promise.all([
-      fetch(CATT_ENCODER_URL),
-      fetch(CATT_DECODER_URL)
-    ]);
-
-    if (!encoderRes.ok) throw new Error(`Failed to download CaTT encoder model: HTTP ${encoderRes.status}`);
-    if (!decoderRes.ok) throw new Error(`Failed to download CaTT decoder model: HTTP ${decoderRes.status}`);
-
-    const encoderBuffer = await encoderRes.arrayBuffer();
-    const decoderBuffer = await decoderRes.arrayBuffer();
-
-    await dictionaryDB.set({ key: 'catt_encoder', data: encoderBuffer });
-    await dictionaryDB.set({ key: 'catt_decoder', data: decoderBuffer });
-
-    const totalBytes = encoderBuffer.byteLength + decoderBuffer.byteLength;
-    const sizeMB = (totalBytes / (1024 * 1024)).toFixed(1);
-
-    await dictionaryDB.set({
-      key: 'catt_meta',
-      installed: true,
-      timestamp: Date.now(),
-      sizeMB
-    });
-
-    // Clean up legacy rawi keys if present
-    await dictionaryDB.delete('rawi_model').catch(() => {});
-    await dictionaryDB.delete('rawi_vocab').catch(() => {});
-    await dictionaryDB.delete('rawi_meta').catch(() => {});
-
-    await cattDiacritizer.init();
-
-    return { success: true, sizeMB };
-  }
-
-  downloadRawi() {
-    return this.downloadCatt();
-  }
-
-  /**
-   * Deletes the CaTT models from IndexedDB.
-   */
-  async deleteCatt() {
-    await dictionaryDB.delete('catt_encoder').catch(() => {});
-    await dictionaryDB.delete('catt_decoder').catch(() => {});
-    await dictionaryDB.delete('catt_meta').catch(() => {});
-    await dictionaryDB.delete('rawi_model').catch(() => {});
-    await dictionaryDB.delete('rawi_vocab').catch(() => {});
-    await dictionaryDB.delete('rawi_meta').catch(() => {});
-    await cattDiacritizer.destroy();
-    return { success: true };
-  }
-
-  deleteRawi() {
-    return this.deleteCatt();
   }
 
   /**

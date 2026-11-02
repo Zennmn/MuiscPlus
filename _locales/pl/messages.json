@@ -618,22 +618,6 @@
     "message": "Czy na pewno chcesz usunąć słownik japoński Kuromoji offline?",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "Model diakrytyzacji arabskiej offline (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "Neuronowy model diakrytyzacji (~74.3 MB) przywracający Tashkeel i dokładne samogłoski w arabskich tekstach piosenek. Przechowywany lokalnie w przeglądarce.",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "Pobrać model diakrytyzacji arabskiej CaTT (~74.3 MB)? Zostanie zapisany lokalnie w przeglądarce w celu wymowy arabskiej offline.",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "Czy na pewno chcesz usunąć model arabski CaTT offline?",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "Tłumacz Google",
     "description": "Translation provider option"

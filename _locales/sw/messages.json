@@ -618,22 +618,6 @@
     "message": "Je, una uhakika unataka kufuta kamusi ya Kijapani ya Kuromoji ya nje ya mtandao?",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "Mfano wa Uwekaji Alama wa Kiarabu Nje ya Mtandao (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "Mfano wa mfumo wa neva (~74.3 MB) wa kurejesha Tashkeel na irabu sahihi katika maneno ya nyimbo za Kiarabu. Umehifadhiwa kwenye kivinjari.",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "Pakua mfano wa uwekaji alama wa Kiarabu wa CaTT (~74.3 MB)? Utahifadhiwa kwenye kivinjari chako kwa matamshi ya Kiarabu nje ya mtandao.",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "Je, una uhakika unataka kufuta mfano wa Kiarabu wa CaTT wa nje ya mtandao?",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "Google Translate",
     "description": "Translation provider option"

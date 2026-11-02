@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:ttml": "node scripts/build-ttml.mjs",
+    "build:miuix": "node scripts/package-chrome.mjs --miuix-only",
     "build": "npm run build:ttml && vite build",
     "package:chrome": "npm run build && node scripts/package-chrome.mjs",
     "dev": "vite --host 127.0.0.1",

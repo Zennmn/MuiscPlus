@@ -618,22 +618,6 @@
     "message": "क्या आप वाकई ऑफ़लाइन जापानी Kuromoji शब्दकोश को हटाना चाहते हैं?",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "ऑफ़लाइन अरबी डायक्रिटाइज़र मॉडल (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "अरबी गीतों में तशकील और सटीक स्वरों को पुनर्स्थापित करने के लिए न्यूरल डायक्रिटाइज़र मॉडल (~74.3 MB)। ब्राउज़र में स्थानीय रूप से संग्रहीत।",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "अरबी CaTT डायक्रिटाइज़र मॉडल (~74.3 MB) डाउनलोड करें? यह ऑफ़लाइन अरबी उच्चारण के लिए आपके ब्राउज़र में स्थानीय रूप से संग्रहीत किया जाएगा।",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "क्या आप वाकई ऑफ़लाइन अरबी CaTT मॉडल को हटाना चाहते हैं?",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "Google अनुवाद",
     "description": "Translation provider option"

@@ -1,10 +1,8 @@
 /**
  * Offline Arabic Romanizer.
  * Supports vocalized/Tashkeel Arabic, sun letters assimilation (الحروف الشمسية)
- * for definite article "ال", and on-the-fly diacritization via CaTT ONNX model.
+ * for definite article "ال", and rule-based transliteration of unvocalized text.
  */
-
-import { cattDiacritizer } from './cattDiacritizer.js';
 
 const ARABIC_CHAR_MAP = {
   '\u0621': "'",
@@ -118,124 +116,13 @@ export class ArabicRomanizer {
     return await this.romanizeLine(text);
   }
 
-  /**
-   * Aligns vocalized Arabic text back onto original syllable slices.
-   * Matches base letters with their attached Harakat/Tashkeel combining marks.
-   */
-  static alignVocalizedToSyllables(unvocalizedSyllables, vocalizedLine) {
-    if (!Array.isArray(unvocalizedSyllables)) return [];
-    if (!vocalizedLine) return unvocalizedSyllables.map(s => s.text || '');
-
-    const alreadyVocalized = this.isFullyVocalized(vocalizedLine) && unvocalizedSyllables.every(s => this.isFullyVocalized(s.text));
-    if (alreadyVocalized) {
-      return unvocalizedSyllables.map(s => s.text || '');
-    }
-
-    const tokens = vocalizedLine.match(/\p{L}[\p{Mn}]*|[^\p{L}]/gu) || [];
-    let tokenIdx = 0;
-
-    return unvocalizedSyllables.map(s => {
-      const origText = s.text || '';
-      const match = origText.match(/^(\s*)(.*?)(\s*)$/);
-      const leadingSpace = match ? match[1] : '';
-      const coreText = match ? match[2] : origText;
-      const trailingSpace = match ? match[3] : '';
-
-      if (!coreText) {
-        return origText;
-      }
-
-      const bareCore = coreText.replace(/[\u064B-\u0652\u0670]/gu, '');
-      let vocalizedCore = '';
-
-      for (const ch of bareCore) {
-        if (/\p{L}/u.test(ch)) {
-          while (tokenIdx < tokens.length && !/\p{L}/u.test(tokens[tokenIdx])) {
-            tokenIdx++;
-          }
-          if (tokenIdx < tokens.length) {
-            vocalizedCore += tokens[tokenIdx++];
-          }
-        } else {
-          vocalizedCore += ch;
-        }
-      }
-
-      return leadingSpace + (vocalizedCore || coreText) + trailingSpace;
-    });
-  }
-
-  static reconcileVocalization(original, vocalized) {
-    if (!original) return '';
-    if (!vocalized) return original;
-
-    const isMark = c => /[\u064B-\u0652\u0670]/u.test(c);
-    const isLetter = c => /[\u0621-\u063A\u0641-\u064A\u0671\u06A9\u06CC]/u.test(c);
-    const KEY = { '\u0623': '\u0627', '\u0625': '\u0627', '\u0622': '\u0627', '\u0671': '\u0627',
-      '\u0649': '\u064A', '\u06CC': '\u064A', '\u0629': '\u0647', '\u0624': '\u0621', '\u0626': '\u0621', '\u06A9': '\u0643' };
-    const key = c => KEY[c] || c;
-
-    const parse = str => {
-      const units = [];
-      for (const ch of str) {
-        const last = units[units.length - 1];
-        if (isMark(ch) && last && last.letter !== null) last.marks += ch;
-        else if (isLetter(ch)) units.push({ letter: ch, marks: '' });
-        else units.push({ letter: null, raw: ch, marks: '' });
-      }
-      return units;
-    };
-
-    const O = parse(original);
-    const V = parse(vocalized).filter(u => u.letter !== null);
-    const oIdx = [];
-    O.forEach((u, i) => { if (u.letter !== null) oIdx.push(i); });
-
-    const n = oIdx.length, m = V.length;
-    const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
-    for (let a = n - 1; a >= 0; a--) {
-      for (let b = m - 1; b >= 0; b--) {
-        dp[a][b] = key(O[oIdx[a]].letter) === key(V[b].letter)
-          ? dp[a + 1][b + 1] + 1
-          : Math.max(dp[a + 1][b], dp[a][b + 1]);
-      }
-    }
-    const match = new Map();
-    let a = 0, b = 0;
-    while (a < n && b < m) {
-      if (key(O[oIdx[a]].letter) === key(V[b].letter)) { match.set(oIdx[a], V[b]); a++; b++; }
-      else if (dp[a + 1][b] >= dp[a][b + 1]) a++;
-      else b++;
-    }
-
-    return O.map((u, i) => {
-      if (u.letter === null) return u.raw;
-      const v = match.get(i);
-      if (!v) return u.letter + u.marks;
-      return v.letter + (v.marks || u.marks);
-    }).join('');
-  }
-
   static async romanizeSyllables(syllables, lineContext = '') {
     if (!Array.isArray(syllables)) return [];
 
-    let alignedVocalized = null;
-    const isUnvocalized = !this.isFullyVocalized(lineContext);
-
-    if (isUnvocalized) {
-      await cattDiacritizer.ensureLoaded();
-      if (cattDiacritizer.isReady()) {
-        const vocalizedLine = await cattDiacritizer.diacritize(lineContext);
-        if (vocalizedLine && vocalizedLine !== lineContext) {
-          alignedVocalized = this.alignVocalizedToSyllables(syllables, this.reconcileVocalization(lineContext, vocalizedLine));
-        }
-      }
-    }
-
     return syllables.map((s, idx) => {
       const origText = s.text || '';
-      const textToRomanize = (alignedVocalized && alignedVocalized[idx]) ? alignedVocalized[idx] : origText;
-      const prevSyllableText = idx > 0 ? (alignedVocalized ? alignedVocalized[idx - 1] : syllables[idx - 1]?.text) : '';
+      const textToRomanize = origText;
+      const prevSyllableText = idx > 0 ? syllables[idx - 1]?.text : '';
 
       const match = textToRomanize.match(/^(\s*)(.*?)(\s*)$/);
       const leadingSpace = match ? match[1] : '';
@@ -248,7 +135,7 @@ export class ArabicRomanizer {
 
       const prevWord = (prevSyllableText || '').trim().replace(/[\u064B-\u0652\u0670\u0640]/g, '');
 
-      const textAt = k => ((alignedVocalized && alignedVocalized[k]) ? alignedVocalized[k] : (syllables[k]?.text || ''));
+      const textAt = k => syllables[k]?.text || '';
       let pauseAfter = true;
       for (let k = idx + 1; k < syllables.length; k++) {
         if (/[\u0621-\u064A\u0671]/u.test(textAt(k))) { pauseAfter = false; break; }
@@ -261,7 +148,7 @@ export class ArabicRomanizer {
         wordLen += countLetters(prv);
       }
 
-      const romCore = this.romanizeVocalizedLine(coreText, prevWord, prevSyllableText || '', !!alignedVocalized, { pauseAfter, wordLen }).trim();
+      const romCore = this.romanizeVocalizedLine(coreText, prevWord, prevSyllableText || '', false, { pauseAfter, wordLen }).trim();
 
       return { text: leadingSpace + romCore + trailingSpace };
     });
@@ -269,18 +156,7 @@ export class ArabicRomanizer {
 
   static async romanizeLine(lineText) {
     if (!lineText) return '';
-
-    let textToProcess = lineText;
-    const isUnvocalized = !this.isFullyVocalized(lineText);
-
-    if (isUnvocalized) {
-      await cattDiacritizer.ensureLoaded();
-      if (cattDiacritizer.isReady()) {
-        textToProcess = this.reconcileVocalization(lineText, await cattDiacritizer.diacritize(lineText));
-      }
-    }
-
-    return this.romanizeVocalizedLine(textToProcess);
+    return this.romanizeVocalizedLine(lineText);
   }
 
   static romanizeVocalizedLine(lineText, initialPrevWord = '', initialPrevRaw = '', force = false, ctx = {}) {

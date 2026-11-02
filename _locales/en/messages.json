@@ -1,4 +1,9 @@
 {
+  "msgLoading": { "message": "Loading…" },
+  "msgErrorLoadingSettings": { "message": "Could not load the settings interface." },
+  "msgPlayerFontPreviewFailed": { "message": "Could not load font preview." },
+  "navExpandSidebar": { "message": "Expand navigation" },
+  "navCollapseSidebar": { "message": "Collapse navigation" },
   "extensionName": {
     "message": "Muisc+",
     "description": "Extension name"
@@ -642,22 +647,6 @@
     "message": "Are you sure you want to delete the offline Japanese Kuromoji dictionary?",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "Offline Arabic Diacritizer Model (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "Neural diacritizer model (~74.3 MB) that restores Tashkeel and accurate vowels in Arabic lyrics. Stored locally in your browser.",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "Download the Arabic CaTT diacritizer model (~74.3 MB)? It will be stored in your browser for offline Arabic pronunciation.",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "Are you sure you want to delete the offline Arabic CaTT model?",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "Google Translate",
     "description": "Translation provider option"
@@ -976,7 +965,16 @@
     "message": "Apple Music lyrics source order"
   },
   "descAppleSourceOrder": {
-    "message": "Muisc+ tries these lyrics sources in order. Apple Music's native lyrics always stay last."
+    "message": "Press and hold a source, then drag to reorder; Apple Music always remains the final fallback."
+  },
+  "sourceDragHandle": {
+    "message": "Press and hold, then drag to reorder"
+  },
+  "sourceMoveUp": {
+    "message": "Move up"
+  },
+  "sourceMoveDown": {
+    "message": "Move down"
   },
   "sourceNativePinned": {
     "message": "Always used as the final fallback"

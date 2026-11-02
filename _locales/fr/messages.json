@@ -618,22 +618,6 @@
     "message": "Voulez-vous vraiment supprimer le dictionnaire japonais Kuromoji hors ligne ?",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "Modèle de diacritisation arabe hors ligne (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "Modèle neuronal de diacritisation (~74.3 Mo) pour restaurer le Tashkeel et les voyelles précises des paroles en arabe. Stocké localement dans le navigateur.",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "Télécharger le modèle de diacritisation arabe CaTT (~74.3 Mo) ? Il sera stocké localement dans votre navigateur pour la prononciation arabe hors ligne.",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "Voulez-vous vraiment supprimer le modèle arabe CaTT hors ligne ?",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "Google Traduction",
     "description": "Translation provider option"

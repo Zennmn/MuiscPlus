@@ -618,22 +618,6 @@
     "message": "Är du säker på att du vill ta bort den offline japanska Kuromoji-ordboken?",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "Offline arabisk diakritiseringsmodell (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "Neural diakritiseringsmodell (~74.3 MB) för att återställa Tashkeel och korrekta vokaler i arabiska låttexter. Lagras lokalt i webbläsaren.",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "Vill du ladda ner den arabiska CaTT-diakritiseringsmodellen (~74.3 MB)? Den lagras lokalt i din webbläsare för offline arabiskt uttal.",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "Är du säker på att du vill ta bort den offline arabiska CaTT-modellen?",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "Google Översätt",
     "description": "Translation provider option"

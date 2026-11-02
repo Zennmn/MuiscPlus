@@ -618,22 +618,6 @@
     "message": "آیا از حذف دیکشنری ژاپنی Kuromoji آفلاین مطمئن هستید؟",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "مدل اعراب‌گذاری عربی آفلاین (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "مدل عصبی اعراب‌گذاری (~74.3 مگابایت) برای بازیابی تشکیل و حروف صدادار دقیق در متن آهنگ‌های عربی. ذخیره‌شده در مرورگر.",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "مدل اعراب‌گذاری عربی CaTT (~74.3 مگابایت) دانلود شود؟ برای تلفظ آفلاین عربی در مرورگر شما ذخیره خواهد شد.",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "آیا از حذف مدل آفلاین عربی CaTT مطمئن هستید؟",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "گوگل ترنسلیت",
     "description": "Translation provider option"

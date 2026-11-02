@@ -17,11 +17,7 @@ const PROVIDER_PREFERENCE_PREFIX = 'lyplusApplePlayerProvider_';
 
 export class MessageHandler {
   static handle(message, sender, sendResponse) {
-    if (!message
-      || message.target === 'catt-offscreen'
-      || message.target === 'rawi-offscreen') {
-      return false;
-    }
+    if (!message) return false;
 
     const handlers = {
       BROWSER_FULLSCREEN: async () => sendResponse({ success: true, ...await browserFullscreen(message, sender) }),
@@ -376,12 +372,27 @@ export class MessageHandler {
     }
   }
 
+  static isRetiredArabicDictionary(message) {
+    const dictionary = typeof message?.dictionary === 'string' ? message.dictionary.toLowerCase() : '';
+    return ['arabic', 'catt', 'rawi'].includes(dictionary);
+  }
+
+  static sendArabicModelUnavailable(sendResponse) {
+    sendResponse({
+      success: false,
+      unavailable: true,
+      code: 'ARABIC_MODEL_UNAVAILABLE',
+      error: 'The CaTT Arabic model is no longer available. Rule-based Arabic transliteration is still supported.'
+    });
+  }
+
   static async getDictionaryStatus(message, sendResponse) {
     try {
-      const isArabic = message.dictionary === 'arabic' || message.dictionary === 'catt' || message.dictionary === 'rawi';
-      const status = isArabic
-        ? await dictionaryService.getCattStatus()
-        : await dictionaryService.getKuromojiStatus();
+      if (this.isRetiredArabicDictionary(message)) {
+        this.sendArabicModelUnavailable(sendResponse);
+        return;
+      }
+      const status = await dictionaryService.getKuromojiStatus();
       sendResponse({ success: true, status });
     } catch (error) {
       console.error('Error getting dictionary status:', error);
@@ -391,10 +402,11 @@ export class MessageHandler {
 
   static async downloadDictionary(message, sendResponse) {
     try {
-      const isArabic = message.dictionary === 'arabic' || message.dictionary === 'catt' || message.dictionary === 'rawi';
-      const result = isArabic
-        ? await dictionaryService.downloadCatt()
-        : await dictionaryService.downloadKuromoji();
+      if (this.isRetiredArabicDictionary(message)) {
+        this.sendArabicModelUnavailable(sendResponse);
+        return;
+      }
+      const result = await dictionaryService.downloadKuromoji();
       sendResponse({ success: true, result });
     } catch (error) {
       console.error('Error downloading dictionary:', error);
@@ -404,9 +416,11 @@ export class MessageHandler {
 
   static async deleteDictionary(message, sendResponse) {
     try {
-      const isArabic = message.dictionary === 'arabic' || message.dictionary === 'catt' || message.dictionary === 'rawi';
-      if (isArabic) await dictionaryService.deleteCatt();
-      else await dictionaryService.deleteKuromoji();
+      if (this.isRetiredArabicDictionary(message)) {
+        this.sendArabicModelUnavailable(sendResponse);
+        return;
+      }
+      await dictionaryService.deleteKuromoji();
       sendResponse({ success: true });
     } catch (error) {
       console.error('Error deleting dictionary:', error);

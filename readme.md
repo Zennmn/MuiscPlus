@@ -20,7 +20,7 @@
 
 ## 安装
 
-需要 Node.js 20.19+（20.x）或 22.12+，以及 npm。在终端中运行：
+需要 Node.js 20.19+（20.x）或 22.12+、npm 和 JDK 21。首次打包会下载 Gradle 和界面依赖。在终端中运行：
 
 ```sh
 git clone https://github.com/Zennmn/YouLyPlus.git
@@ -42,6 +42,6 @@ npm run build  # 构建播放器和 TTML 解析器
 
 ## 鸣谢与许可
 
-项目基于 [YouLyPlus](https://github.com/ibratabian17/YouLyPlus)，播放器使用 [AMLL](https://github.com/amll-dev/applemusic-like-lyrics)。其他依赖及许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+项目基于 [YouLyPlus](https://github.com/ibratabian17/YouLyPlus)，播放器使用 [AMLL](https://github.com/amll-dev/applemusic-like-lyrics)，设置界面使用 [Miuix](https://github.com/compose-miuix-ui/miuix)。其他依赖及许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 本项目使用 [AGPL-3.0-only](LICENSE) 许可。

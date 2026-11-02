@@ -618,22 +618,6 @@
     "message": "ஆஃப்லைன் ஜப்பானிய Kuromoji அகராதியை நிச்சயமாக நீக்க விரும்புகிறீர்களா?",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "ஆஃப்லைன் அரபு டயாக்ரிடைசர் மாதிரி (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "அரபு பாடல் வரிகளில் தஷ்கீல் மற்றும் துல்லியமான உயிரெழுத்துக்களை மீட்டெடுப்பதற்கான நியூரல் டயாக்ரிடைசர் மாதிரி (~74.3 MB). உலாவியில் உள்ளூரில் சேமிக்கப்படுகிறது.",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "அரபு CaTT டயாக்ரிடைசர் மாதிரியை (~74.3 MB) பதிவிறக்கவா? ஆஃப்லைன் அரபு உச்சரிப்புக்காக இது உங்கள் உலாவியில் உள்ளூரில் சேமிக்கப்படும்.",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "ஆஃப்லைன் அரபு CaTT மாதிரியை நிச்சயமாக நீக்க விரும்புகிறீர்களா?",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "கூகுள் மொழிபெயர்ப்பு",
     "description": "Translation provider option"

@@ -618,22 +618,6 @@
     "message": "Вы уверены, что хотите удалить офлайн-словарь японского языка Kuromoji?",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "Офлайн-модель огласовки арабского языка (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "Нейросетевая модель огласовки (~74.3 МБ) для восстановления ташкиля и точных гласных в текстах арабских песен. Хранится локально в браузере.",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "Скачать модель огласовки арабского языка CaTT (~74.3 МБ)? Она сохранится локально в вашем браузере для офлайн-произношения арабского языка.",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "Вы уверены, что хотите удалить офлайн-модель арабского языка CaTT?",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "Google Переводчик",
     "description": "Translation provider option"

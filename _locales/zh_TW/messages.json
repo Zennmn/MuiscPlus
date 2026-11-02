@@ -1,4 +1,9 @@
 {
+  "msgLoading": { "message": "正在載入…" },
+  "msgErrorLoadingSettings": { "message": "設定介面載入失敗。" },
+  "msgPlayerFontPreviewFailed": { "message": "無法載入字型預覽。" },
+  "navExpandSidebar": { "message": "展開導覽列" },
+  "navCollapseSidebar": { "message": "收合導覽列" },
   "extensionName": {
     "message": "Muisc+",
     "description": "Extension name"
@@ -640,22 +645,6 @@
     "message": "確定要刪除離線日語 Kuromoji 詞典嗎？",
     "description": "Confirmation prompt before deleting Japanese dictionary"
   },
-  "labelOfflineArabicDict": {
-    "message": "離線阿拉伯語變音符號模型 (CaTT)",
-    "description": "Setting title for downloadable offline Arabic CaTT model"
-  },
-  "descOfflineArabicDict": {
-    "message": "神經變音符號模型（約 74.3 MB），用於還原阿拉伯語歌詞中的 Tashkeel（變音符號）與正確母音，並儲存在瀏覽器本機。",
-    "description": "Setting description for downloadable offline Arabic CaTT model"
-  },
-  "confirmDownloadArabicDict": {
-    "message": "要下載阿拉伯語 CaTT 變音符號模型（約 74.3 MB）嗎？模型會儲存在瀏覽器本機，供離線阿拉伯語發音使用。",
-    "description": "Confirmation prompt before downloading Arabic CaTT model"
-  },
-  "confirmDeleteArabicDict": {
-    "message": "確定要刪除離線阿拉伯語 CaTT 模型嗎？",
-    "description": "Confirmation prompt before deleting Arabic CaTT model"
-  },
   "optionGoogleTranslate": {
     "message": "Google 翻譯",
     "description": "Translation provider option"
@@ -974,7 +963,16 @@
     "message": "Apple Music 歌詞來源順序"
   },
   "descAppleSourceOrder": {
-    "message": "Muisc+ 會依此順序嘗試歌詞來源，Apple Music 原生歌詞一律排在最後。"
+    "message": "長按歌詞來源並拖曳排序；Apple Music 一律作為最後的回退來源。"
+  },
+  "sourceDragHandle": {
+    "message": "長按拖曳排序"
+  },
+  "sourceMoveUp": {
+    "message": "上移"
+  },
+  "sourceMoveDown": {
+    "message": "下移"
   },
   "sourceNativePinned": {
     "message": "始終作為最後的備援來源"
