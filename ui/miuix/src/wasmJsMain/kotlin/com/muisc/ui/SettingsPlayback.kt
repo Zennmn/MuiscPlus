@@ -105,7 +105,7 @@ private const val LYRICS_SOURCES_REORDER = "lyricsSources.reorder"
 private const val LYRICS_SOURCES_ADD = "lyricsSources.add"
 private const val LYRICS_SOURCES_REMOVE = "lyricsSources.remove"
 private const val TTML_TRANSLATION_GUIDE =
-    "https://github.com/Zennmn/YouLyPlus/blob/main/docs/ttml-translation.md"
+    "https://github.com/Zennmn/MuiscPlus/blob/main/docs/ttml-translation.md"
 
 private val allLyricsSources = listOf("amll", "lunabeat", "amlyrics", NATIVE_LYRICS_SOURCE)
 private val defaultLyricsSources = allLyricsSources

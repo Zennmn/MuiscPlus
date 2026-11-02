@@ -6,7 +6,7 @@
   <p>
     <a href="#安装">安装</a> ·
     <a href="docs/applemusic-amll-testing.md">使用指南</a> ·
-    <a href="https://github.com/Zennmn/YouLyPlus/issues">问题反馈</a>
+    <a href="https://github.com/Zennmn/MuiscPlus/issues">问题反馈</a>
   </p>
 </div>
 
@@ -23,8 +23,8 @@
 需要 Node.js 20.19+（20.x）或 22.12+、npm 和 JDK 21。首次打包会下载 Gradle 和界面依赖。在终端中运行：
 
 ```sh
-git clone https://github.com/Zennmn/YouLyPlus.git
-cd YouLyPlus
+git clone https://github.com/Zennmn/MuiscPlus.git
+cd MuiscPlus
 npm ci
 npm run package:chrome
 ```

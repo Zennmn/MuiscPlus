@@ -63,8 +63,8 @@ fun AdvancedSection(
                 Text("Muisc+ ${state.value("__version")}".trim())
                 Text(tr("aboutAppleDescription", "Apple Music lyrics with the AMLL player and optional translation."), style = MiuixTheme.textStyles.footnote1)
                 Text(tr("upstreamAttribution", "Built on AMLL and open-source lyric sources."), style = MiuixTheme.textStyles.footnote1)
-                TextButton(text = tr("linkSourceCode", "Source code"), onClick = { actions.call("openExternal", "https://github.com/Zennmn/YouLyPlus") })
-                TextButton(text = tr("linkIssues", "Issues & help"), onClick = { actions.call("openExternal", "https://github.com/Zennmn/YouLyPlus/issues") })
+                TextButton(text = tr("linkSourceCode", "Source code"), onClick = { actions.call("openExternal", "https://github.com/Zennmn/MuiscPlus") })
+                TextButton(text = tr("linkIssues", "Issues & help"), onClick = { actions.call("openExternal", "https://github.com/Zennmn/MuiscPlus/issues") })
             }
         }
         state.status["advanced"]?.takeIf { it.isNotEmpty() }?.let { Text(it, style = MiuixTheme.textStyles.footnote1) }
