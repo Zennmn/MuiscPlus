@@ -18,7 +18,13 @@
     "https://cdn.jsdelivr.net/*",
     "https://github.com/*",
     "https://*.githubusercontent.com/*",
-    "https://2755337087.github.io/ttml-hub/*"
+    "https://2755337087.github.io/ttml-hub/*",
+    "https://interface.music.163.com/*",
+    "https://songsearch.kugou.com/*",
+    "https://krcs.kugou.com/*",
+    "https://lyrics.kugou.com/*",
+    "https://api.qishui.com/*",
+    "https://beta-luna.douyin.com/*"
   ],
   "optional_host_permissions": [
     "https://*/*",

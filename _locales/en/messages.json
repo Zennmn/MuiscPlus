@@ -1353,5 +1353,29 @@
   },
   "playerFavoriteLoadFailed": {
     "message": "Unable to read favorite status. Click the star to retry."
+  },
+  "lyricsSourceNetease": {
+    "message": "NetEase Cloud Music"
+  },
+  "lyricsSourceKugou": {
+    "message": "Kugou Music"
+  },
+  "lyricsSourceSoda": {
+    "message": "Soda Music"
+  },
+  "categoryFallbackSourceOrder": {
+    "message": "Fallback lyrics sources"
+  },
+  "labelFallbackProviderOrder": {
+    "message": "Fallback source priority"
+  },
+  "descFallbackSourceOrder": {
+    "message": "Only when the main group reaches Apple Music and native lyrics are plain text or unavailable, try this group in order for word timing. Native line or word timing is used directly without fallback. Show plain text first and replace it when a more precise match arrives in the background. Keep searching after line-timed or plain-text fallback results. Prefer word timing, then line timing, then plain text; native lyrics win at equal precision, otherwise this order breaks ties. Press and hold to reorder, or add/remove sources. Removing all sources disables this group; the default enables all three."
+  },
+  "descAppleMainSourceOrder": {
+    "message": "Press and hold to reorder. AMLL, LunaBeat and AmLyrics are tried first by default; Apple Music’s native lyrics stay last in this group."
+  },
+  "sourceNativeMainPinned": {
+    "message": "Always last in the main group"
   }
 }

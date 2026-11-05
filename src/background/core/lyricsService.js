@@ -9,14 +9,17 @@ import { CONFIG, PROVIDERS } from '../constants.js';
 import { DataParser } from '../utils/dataParser.js';
 import { Utilities } from '../utils/utilities.js';
 import { appleMusicLyrics } from '../services/appleMusicLyricsService.js';
-import { APPLE_LYRICS_ORDER, normalizeAppleLyricsOrder } from '../../lib/appleLyricsSources.js';
+import { APPLE_LYRICS_ORDER, FALLBACK_LYRICS_ORDER, normalizeAppleLyricsOrder, normalizeFallbackLyricsOrder } from '../../lib/appleLyricsSources.js';
+import { lyricsPrecision } from '../utils/fallbackLyrics.js';
 
-const SELECTABLE_PROVIDERS = new Set([PROVIDERS.LOCAL, ...APPLE_LYRICS_ORDER]);
+const SELECTABLE_PROVIDERS = new Set([PROVIDERS.LOCAL, ...APPLE_LYRICS_ORDER, ...FALLBACK_LYRICS_ORDER]);
 
 export class LyricsService {
   static localLyricsRevisions = new Map();
   static cacheEpoch = 0;
   static cacheMutationQueue = Promise.resolve();
+  static requestSequence = 0;
+  static latestRequests = new Map();
 
   static queueCacheMutation(operation) {
     const run = this.cacheMutationQueue.then(operation, operation);
@@ -80,13 +83,18 @@ export class LyricsService {
     }
   }
 
-  static async getOrFetch(songInfo, forceReload = false, requestedSource = null) {
+  static async getOrFetch(songInfo, forceReload = false, requestedSource = null, options = {}) {
     if (!songInfo?.appleId) throw new Error('Apple Music song ID is required');
-    return this.getAppleMusicLyrics(songInfo, forceReload, requestedSource);
+    return this.getAppleMusicLyrics(songInfo, forceReload, requestedSource, options);
   }
 
-  static async getAppleMusicLyrics(songInfo, forceReload = false, provider = null) {
+  static async getAppleMusicLyrics(songInfo, forceReload = false, provider = null, options = {}) {
     const cacheKey = this.createCacheKey(songInfo);
+    const request = ++this.requestSequence;
+    this.latestRequests.delete(cacheKey);
+    this.latestRequests.set(cacheKey, request);
+    while (this.latestRequests.size > CONFIG.CACHE_MAX_ENTRIES) this.latestRequests.delete(this.latestRequests.keys().next().value);
+    const currentRequest = () => this.latestRequests.get(cacheKey) === request;
     const language = this.lyricsLanguage(songInfo);
     const revision = this.localLyricsRevisions.get(cacheKey) || 0;
     const epoch = this.cacheEpoch;
@@ -100,14 +108,17 @@ export class LyricsService {
       appleMusicLyrics.rememberNative(songInfo);
       const settings = await SettingsManager.getLyricsSettings();
       const order = normalizeAppleLyricsOrder(settings.appleMusicLyricsProviderOrder);
-      const orderKey = order.join(',');
+      const fallbackOrder = normalizeFallbackLyricsOrder(settings.appleMusicLyricsFallbackOrder);
+      const orderKey = `${order.join(',')}|fallback-v1:${fallbackOrder.join(',')}`;
+      const sourceOptions = { cacheResults: settings.cacheStrategy !== 'none', fallbackOrder };
       const preferenceKey = `lyplusApplePlayerProvider_${songInfo.appleId}`;
       if (resetToAuto) await SettingsManager.set({ [preferenceKey]: 'auto' });
       const saved = explicitSelection ? {} : await SettingsManager.get({ [preferenceKey]: 'auto' });
-      if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider);
+      if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider, options);
 
       const preference = manualProvider || saved[preferenceKey] || 'auto';
       const selected = SELECTABLE_PROVIDERS.has(preference) ? preference : null;
+      let automatic = !selected;
       const expected = {
         sourceOrder: orderKey,
         sourcePreference: selected || 'auto',
@@ -116,7 +127,7 @@ export class LyricsService {
       const cacheEnabled = settings.cacheStrategy !== 'none';
       if (!cacheEnabled) {
         state.deleteCached(cacheKey);
-        appleMusicLyrics.clearResultCache();
+        appleMusicLyrics.clearResultCache(false);
         await this.queueCacheMutation(async () => {
           state.deleteCached(cacheKey);
           await lyricsDB.delete(cacheKey);
@@ -124,7 +135,7 @@ export class LyricsService {
       }
 
       let cached = null;
-      if (!manualProvider && !forceReload && cacheEnabled) {
+      if (!manualProvider && cacheEnabled) {
         const memoryCached = state.getCached(cacheKey);
         if (memoryCached?.lyrics
           && memoryCached.sourceOrder === expected.sourceOrder
@@ -139,7 +150,7 @@ export class LyricsService {
 
       let local = null;
       let lyrics = null;
-      if (cached?.lyrics) {
+      if (cached?.lyrics && !forceReload) {
         const cachedProvider = cached.lyrics.provider || cached.lyrics.metadata?.provider;
         if (cachedProvider === PROVIDERS.LOCAL) {
           local = await this.checkLocalLyrics(songInfo);
@@ -149,16 +160,20 @@ export class LyricsService {
           // Without expiry, a fallback must still yield when a preferred source gains lyrics.
           const preferred = selected
             ? (selected !== cachedProvider && selected !== PROVIDERS.LOCAL ? [selected] : [])
-            : order.slice(0, Math.max(0, order.indexOf(cachedProvider)));
+            : FALLBACK_LYRICS_ORDER.includes(cachedProvider)
+              ? order.filter(candidate => candidate !== 'applemusic')
+              : order.slice(0, Math.max(0, order.indexOf(cachedProvider)));
           for (const candidate of preferred) {
-            lyrics = await appleMusicLyrics.provider(candidate, songInfo, true, { cacheResults: cacheEnabled });
-            if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider);
+            lyrics = await appleMusicLyrics.provider(candidate, songInfo, true, sourceOptions);
+            if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider, options);
             if (lyrics) break;
           }
           // A failed validation returns the usable cached lyrics; it never expires by age.
-          lyrics ||= await appleMusicLyrics.revalidate(songInfo, cached.lyrics);
+          lyrics ||= !selected && FALLBACK_LYRICS_ORDER.includes(cachedProvider)
+            ? cached.lyrics
+            : await appleMusicLyrics.revalidate(songInfo, cached.lyrics, sourceOptions);
         }
-        if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider);
+        if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider, options);
       }
 
       // Local imports always win in automatic mode; selecting an online source explicitly bypasses it.
@@ -170,7 +185,6 @@ export class LyricsService {
       }
       // A cache miss must not borrow an unvalidated provider result or an old index.
       const sourceForceReload = true;
-      const sourceOptions = { cacheResults: cacheEnabled };
 
       if (!lyrics && selected !== PROVIDERS.LOCAL) {
         lyrics = selected
@@ -179,18 +193,52 @@ export class LyricsService {
       }
 
       // A saved source may be unavailable. Keep its preference and use normal fallback.
-      if (!lyrics && !explicitSelection) {
+      if (!lyrics && !explicitSelection && selected) {
+        automatic = true;
         lyrics = await appleMusicLyrics.resolve(songInfo, sourceForceReload, order, sourceOptions);
       }
 
-      if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider);
+      // Automatic fallback is only for missing/plain native lyrics. Explicit choices stay literal.
+      if (automatic && (!lyrics || lyrics.provider === 'applemusic' || FALLBACK_LYRICS_ORDER.includes(lyrics.provider))) {
+        const native = await appleMusicLyrics.provider('applemusic', songInfo, false, sourceOptions)
+          || (lyrics?.provider === 'applemusic' ? lyrics : null);
+        // The page requests native TTML in parallel. Do not search other platforms
+        // merely because that request has not finished yet. A completion event retries.
+        if (songInfo.appleMusicLyricsPending && !native) {
+          if (lyrics) return { lyrics };
+          if (cached?.lyrics) return { lyrics: cached.lyrics };
+          return { lyrics: null, pending: true };
+        }
+        if (lyricsPrecision(native) >= 2) lyrics = native;
+        else {
+          const retained = lyricsPrecision(cached?.lyrics) > lyricsPrecision(lyrics) ? cached.lyrics : lyrics;
+          let shownPrecision = 0;
+          const onProgress = async candidate => {
+            const precision = lyricsPrecision(candidate);
+            if (!currentRequest() || changed() || precision <= shownPrecision || typeof options.onProgress !== 'function') return;
+            shownPrecision = precision;
+            try { await options.onProgress({ ...candidate, playerProviderPreference: selected || 'auto' }); } catch { /* Page may have navigated. */ }
+          };
+          // Deliver available native text before any platform search; preserve an
+          // already-known better fallback rather than briefly downgrading it.
+          const preliminary = fallbackOrder.includes(retained?.provider) && lyricsPrecision(retained) > lyricsPrecision(native) ? retained : native;
+          if (fallbackOrder.length) await onProgress(preliminary);
+          lyrics = await appleMusicLyrics.fallback.resolve(songInfo, native, fallbackOrder, {
+            ...sourceOptions, force: forceReload, cachedLyrics: retained, onProgress
+          }) || lyrics;
+        }
+        const lateNative = await appleMusicLyrics.provider('applemusic', songInfo, false, sourceOptions);
+        if (lateNative && (lyricsPrecision(lateNative) >= 2 || lyricsPrecision(lateNative) >= lyricsPrecision(lyrics))) lyrics = lateNative;
+      }
+
+      if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider, options);
       if (!lyrics || Utilities.isEmptyLyrics(lyrics)) {
         throw new Error(`No lyrics found from source: ${selected || preference}`);
       }
 
-      if (manualProvider) {
+      if (manualProvider && currentRequest()) {
         await SettingsManager.set({ [preferenceKey]: selected || 'auto' });
-        if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider);
+        if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider, options);
       }
 
       lyrics = {
@@ -216,7 +264,7 @@ export class LyricsService {
       };
       if (cacheEnabled) {
         await this.queueCacheMutation(async () => {
-          if (epoch !== this.cacheEpoch
+          if (!currentRequest() || epoch !== this.cacheEpoch
             || (this.localLyricsRevisions.get(cacheKey) || 0) !== revision) return;
           const current = await SettingsManager.getLyricsSettings();
           if (current.cacheStrategy === 'none') return;
@@ -234,17 +282,17 @@ export class LyricsService {
             }, CONFIG.CACHE_MAX_ENTRIES);
             for (const key of evicted) state.deleteCached(key);
           }
-          if (epoch === this.cacheEpoch
+          if (currentRequest() && epoch === this.cacheEpoch
             && (this.localLyricsRevisions.get(cacheKey) || 0) === revision) {
             state.setCached(cacheKey, result);
           }
         });
       }
-      if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider);
+      if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider, options);
       return result;
     } catch (error) {
       // A request started before a local edit must not hide the newly imported file.
-      if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider);
+      if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider, options);
       throw error;
     }
   }
@@ -389,9 +437,13 @@ export class LyricsService {
     await this.queueCacheMutation(clearOperation || (async () => {}));
   }
 
-  static async getProviderLyrics(songInfo, provider) {
+  static async getProviderLyrics(songInfo, provider, options = {}) {
     if (!songInfo?.appleId) return null;
-    return this.getAppleMusicLyrics(songInfo, false, provider);
+    return this.getAppleMusicLyrics(songInfo, false, provider, options);
+  }
+
+  static rememberNativeLyrics(songInfo) {
+    appleMusicLyrics.rememberNative(songInfo);
   }
 
   static async getLyricsOffset(songInfo) {
@@ -436,7 +488,8 @@ export class LyricsService {
 
   static async getAvailableProviders(songInfo) {
     if (!songInfo?.appleId) return [];
-    const order = normalizeAppleLyricsOrder((await SettingsManager.getLyricsSettings()).appleMusicLyricsProviderOrder);
+    const settings = await SettingsManager.getLyricsSettings();
+    const order = [...normalizeAppleLyricsOrder(settings.appleMusicLyricsProviderOrder), ...normalizeFallbackLyricsOrder(settings.appleMusicLyricsFallbackOrder)];
     const hasLocal = !!(await this.findLocalLyricsRecord(songInfo));
     return hasLocal ? [PROVIDERS.LOCAL, ...order] : order;
   }

@@ -13,6 +13,7 @@ let cachedLyricStatus = 'loading';
 let cachedProviders = [];
 let cachedOffset = 0;
 let manualLyricsProvider = null;
+let pendingLyricsProviderSwitch = null;
 let commandSequence = 0;
 let libraryRefreshTimer;
 const handledLibraryChanges = { local: 0, cache: 0 };
@@ -280,9 +281,19 @@ const LyricsPlusAPI = {
         const saveOffset = args[9];
         manualLyricsProvider = args[0]?.playerProviderPreference && args[0].playerProviderPreference !== 'auto' ? args[0].playerProviderPreference : null;
         args[8] = async (...parameters) => {
-            const result = await switchProvider?.(...parameters);
-            if (result && songIdentity(args[1]) === songIdentity(currentSongInfo)) manualLyricsProvider = parameters[0] === 'auto' ? null : parameters[0];
-            return result;
+            const pending = {};
+            pendingLyricsProviderSwitch = pending;
+            try {
+                const result = await switchProvider?.(...parameters);
+                if (result && songIdentity(args[1]) === songIdentity(currentSongInfo)) manualLyricsProvider = parameters[0] === 'auto' ? null : parameters[0];
+                return result;
+            } finally {
+                if (pendingLyricsProviderSwitch === pending) {
+                    pendingLyricsProviderSwitch = null;
+                    if (pending.nativeArrived && songIdentity(args[1]) === songIdentity(currentSongInfo)
+                        && (!manualLyricsProvider || manualLyricsProvider === 'applemusic')) fetchAndDisplayLyrics(currentSongInfo, false, true);
+                }
+            }
         };
         args[9] = (song, value) => {
             cachedOffset = Number(value) || 0;
@@ -298,9 +309,11 @@ const LyricsPlusAPI = {
     displaySongError: () => { cachedLyricStatus = 'error'; cachedLyricsArguments = null; amllPlayer?.displaySongError(); },
     cleanupLyrics: () => { cachedLyricStatus = 'loading'; cachedLyricsArguments = null; amllPlayer?.cleanupLyrics(); },
     updateDisplayMode: (...args) => amllPlayer?.updateDisplayMode(...args),
-    updateCurrentTick: (seconds) => {
-        if (cachedPlaybackState) cachedPlaybackState.currentTime = seconds;
-        amllPlayer?.updateCurrentTick(seconds);
+    updateCurrentTick: (seconds, sample) => {
+        if (sample && Number.isSafeInteger(cachedPlaybackState?.sampleSequence)
+            && sample.sampleSequence <= cachedPlaybackState.sampleSequence) return;
+        if (cachedPlaybackState) cachedPlaybackState = { ...cachedPlaybackState, ...sample, currentTime: seconds };
+        amllPlayer?.updateCurrentTick(seconds, sample);
     },
     setTranslationLoading: (value) => amllPlayer?.setTranslationLoading(value),
     showToast: (...args) => amllPlayer?.showToast(...args),
@@ -341,7 +354,7 @@ window.addEventListener('YOUPLUS_SETTINGS_UPDATED', (event) => {
     window.initializeLyricsPlusPlatform();
     if (event.detail.changedKeys?.includes('appleMusicTitleCorrection')) refreshTitleFix();
     if (event.detail.changedKeys?.includes('customTranslateTarget')) {
-        currentSongInfo = { ...currentSongInfo, appleMusicTTML: undefined, appleMusicLyricsLanguage: getAppleMusicLyricsLanguage() };
+        currentSongInfo = { ...currentSongInfo, appleMusicTTML: undefined, appleMusicLyricsPending: !currentSongInfo.isVideo, appleMusicLyricsLanguage: getAppleMusicLyricsLanguage() };
         sendPlayerCommand('lyricsLanguage', getAppleMusicLyricsLanguage()).catch(error => console.warn('YouLy+: native language refresh failed', error));
     }
     // Frame messages clone their arguments; keep replay state current explicitly.
@@ -369,6 +382,7 @@ window.addEventListener('message', (event) => {
             titleFixRequest++; titleFix = null;
             cachedLyricsArguments = null; cachedProviders = []; cachedOffset = 0;
             cachedLyricStatus = 'loading'; manualLyricsProvider = null; cachedPlaybackState = null;
+            pendingLyricsProviderSwitch = null;
         }
         currentSongInfo = nextSong;
         amllPlayer?.updateSong(frameSongInfo(currentSongInfo));
@@ -378,15 +392,19 @@ window.addEventListener('message', (event) => {
         if (songIdentity(message.songInfo) !== songIdentity(currentSongInfo) || message.songInfo?.appleMusicLyricsLanguage !== getAppleMusicLyricsLanguage()) return;
         currentSongInfo = message.songInfo;
         // Remember late native TTML for manual source switching, even if an external source won.
-        if (currentSettings.isEnabled) pBrowser.runtime.sendMessage({ type: 'FETCH_LYRICS', songInfo: currentSongInfo }).catch(() => {});
+        if (currentSettings.isEnabled) pBrowser.runtime.sendMessage({ type: 'FETCH_LYRICS', songInfo: currentSongInfo, rememberOnly: true }).catch(() => {});
         const activeProvider = cachedLyricsArguments?.[0]?.provider;
-        if (currentSettings.isEnabled && (!manualLyricsProvider || manualLyricsProvider === 'applemusic') && !['local', 'amll', 'lunabeat', 'amlyrics'].includes(activeProvider)) fetchAndDisplayLyrics(currentSongInfo, false, true);
+        if (pendingLyricsProviderSwitch) pendingLyricsProviderSwitch.nativeArrived = true;
+        if (currentSettings.isEnabled && !pendingLyricsProviderSwitch && (!manualLyricsProvider || manualLyricsProvider === 'applemusic') && !['local', 'amll', 'lunabeat', 'amlyrics'].includes(activeProvider)) fetchAndDisplayLyrics(currentSongInfo, false, true);
     } else if (message.type === 'LYPLUS_PLAYBACK_STATE') {
         if (!message.state || message.state.songId !== (currentSongInfo.appleId || null)) return;
+        if (Number.isSafeInteger(message.state.sampleSequence) && Number.isSafeInteger(cachedPlaybackState?.sampleSequence)
+            && message.state.sampleSequence <= cachedPlaybackState.sampleSequence) return;
         cachedPlaybackState = message.state;
         amllPlayer?.updatePlayback(cachedPlaybackState);
     } else if (message.type === 'LYPLUS_TIME_UPDATE' && message.songId === (currentSongInfo.appleId || null) && Number.isFinite(message.currentTime)) {
-        LyricsPlusAPI.updateCurrentTick(message.currentTime);
+        const { type, ...sample } = message;
+        LyricsPlusAPI.updateCurrentTick(message.currentTime, sample);
     }
 });
 

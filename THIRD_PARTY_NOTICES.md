@@ -30,6 +30,26 @@ License copies and data notices are included as OpenCC-LICENSE.txt,
 OpenCC-DATA-LICENSE.txt, and OpenCC-NOTICES.md in src/vendor/amll-player/.
 No lyrics are sent to an external conversion service.
 
+## Metadata-matched fallback lyrics
+
+The browser adapters and KRC/YRC/LRC parsing in
+src/background/services/lyricsFallbackProviders.js and
+src/background/utils/fallbackLyrics.js use protocol and format references from:
+
+- music-lib, https://github.com/guohuiyuan/music-lib, GNU AGPL version 3:
+  netease/{crypto,netease,lyric}.go, kugou/{song,lyric}.go,
+  soda/{search,song,soda}.go and lyrics/lyrics.go.
+- LDDC, https://github.com/chenmozhijin/LDDC, GNU GPL version 3 only:
+  LDDC/core/api/lyrics/{ne,kg}.py, core/decryptor/eapi.py,
+  core/parser/{krc,yrc,lrc}.py and core/{auto_fetch,algorithm}.py.
+  Copyright (C) 2024-2025 沉默の金 <cmzj@cmzj.org>.
+
+The request protocol and format handling have been adapted for browser APIs.
+The upstream copyright and GPL terms continue to apply to adapted portions;
+the combined extension is distributed under the root AGPL-3.0-only license.
+The GPL version 3 text is included in docs/licenses/LDDC-GPL-3.0.txt.
+These references do not imply affiliation with or endorsement by the platforms.
+
 ## Miuix Compose Web UI
 
 The settings and toolbar popup UI uses the Maven Central release

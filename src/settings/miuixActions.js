@@ -8,7 +8,10 @@ import {
 import {
     APPLE_LYRICS_ORDER,
     APPLE_LYRICS_NAMES,
-    normalizeAppleLyricsOrder
+    normalizeAppleLyricsOrder,
+    FALLBACK_LYRICS_ORDER,
+    FALLBACK_LYRICS_NAMES,
+    normalizeFallbackLyricsOrder
 } from '../lib/appleLyricsSources.js';
 import {
     CustomLLMProvider,
@@ -42,6 +45,10 @@ export const MIUIX_ACTIONS = Object.freeze({
     REORDER_LYRICS_SOURCES: 'lyricsSources.reorder',
     ADD_LYRICS_SOURCE: 'lyricsSources.add',
     REMOVE_LYRICS_SOURCE: 'lyricsSources.remove',
+    FALLBACK_LYRICS_SOURCES_STATE: 'fallbackLyricsSources.state',
+    REORDER_FALLBACK_LYRICS_SOURCES: 'fallbackLyricsSources.reorder',
+    ADD_FALLBACK_LYRICS_SOURCE: 'fallbackLyricsSources.add',
+    REMOVE_FALLBACK_LYRICS_SOURCE: 'fallbackLyricsSources.remove',
     IMPORT_PLAYER_FONT: 'playerFont.import',
     RESET_PLAYER_FONT: 'playerFont.reset',
     DELETE_PLAYER_FONT_ASSET: 'playerFont.delete',
@@ -83,6 +90,12 @@ export function sanitizeImportedSettings(values) {
     const result = {};
 
     for (const [key, value] of Object.entries(picked)) {
+        if (key === 'appleMusicLyricsFallbackOrder') {
+            if (value == null || typeof value === 'string' || Array.isArray(value)) {
+                result[key] = normalizeFallbackLyricsOrder(value).join(',');
+            }
+            continue;
+        }
         if (key === 'cacheStrategy') {
             if (value === 'bounded' || value === 'none' || LEGACY_CACHE_STRATEGIES.has(value)) {
                 result[key] = normalizeCacheStrategy(value);
@@ -241,6 +254,51 @@ export async function removeLyricsProvider(provider) {
         .filter(item => item !== provider && item !== 'applemusic');
     next.push('applemusic');
     return persistLyricsSourceOrder(next);
+}
+
+export function getFallbackLyricsSourceState(value = getSettings().appleMusicLyricsFallbackOrder) {
+    const input = value && typeof value === 'object' && !Array.isArray(value)
+        ? (Object.hasOwn(value, 'order') ? value.order : value.appleMusicLyricsFallbackOrder)
+        : value;
+    const order = normalizeFallbackLyricsOrder(input);
+    return {
+        order,
+        sources: order.map((id, position) => ({
+            id, name: FALLBACK_LYRICS_NAMES[id], position, pinned: false
+        })),
+        available: FALLBACK_LYRICS_ORDER.filter(id => !order.includes(id))
+            .map(id => ({ id, name: FALLBACK_LYRICS_NAMES[id] })),
+        value: order.join(',')
+    };
+}
+
+export async function setFallbackLyricsProviderOrder(value) {
+    const state = getFallbackLyricsSourceState(value);
+    updateSettings({ appleMusicLyricsFallbackOrder: state.value });
+    try {
+        await saveSettings();
+    } catch (error) {
+        throw new MiuixActionError('LYRICS_SOURCE_SAVE_FAILED', 'Could not save the fallback lyrics source order.', {
+            cause: String(error?.message || error)
+        });
+    }
+    return state;
+}
+
+export function addFallbackLyricsProvider(provider) {
+    if (!FALLBACK_LYRICS_ORDER.includes(provider)) {
+        throw new MiuixActionError('LYRICS_SOURCE_UNKNOWN', 'Unknown fallback lyrics source.', { provider });
+    }
+    const state = getFallbackLyricsSourceState();
+    if (state.order.includes(provider)) return Promise.resolve(state);
+    return setFallbackLyricsProviderOrder([...state.order, provider]);
+}
+
+export function removeFallbackLyricsProvider(provider) {
+    if (!FALLBACK_LYRICS_ORDER.includes(provider)) {
+        throw new MiuixActionError('LYRICS_SOURCE_UNKNOWN', 'Unknown fallback lyrics source.', { provider });
+    }
+    return setFallbackLyricsProviderOrder(getFallbackLyricsSourceState().order.filter(id => id !== provider));
 }
 
 async function deleteFontQuietly(fontId) {
@@ -514,6 +572,14 @@ export async function reloadAppleMusicTabs() {
 }
 
 const ACTION_HANDLERS = {
+    [MIUIX_ACTIONS.FALLBACK_LYRICS_SOURCES_STATE]: payload => getFallbackLyricsSourceState(payload),
+    [MIUIX_ACTIONS.REORDER_FALLBACK_LYRICS_SOURCES]: payload => setFallbackLyricsProviderOrder(payload),
+    [MIUIX_ACTIONS.ADD_FALLBACK_LYRICS_SOURCE]: payload => addFallbackLyricsProvider(
+        typeof payload === 'string' ? payload : payload?.provider
+    ),
+    [MIUIX_ACTIONS.REMOVE_FALLBACK_LYRICS_SOURCE]: payload => removeFallbackLyricsProvider(
+        typeof payload === 'string' ? payload : payload?.provider
+    ),
     [MIUIX_ACTIONS.EXPORT_SETTINGS]: () => createSettingsExport(),
     [MIUIX_ACTIONS.IMPORT_SETTINGS]: payload => {
         const value = payload && typeof payload === 'object' && Object.hasOwn(payload, 'json')

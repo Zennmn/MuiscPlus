@@ -14,6 +14,7 @@
 
 - AMLL 全屏播放器，支持逐字歌词、背景和字体设置。
 - 支持 AMLL TTML DB、LunaBeat、AmLyrics 和 Apple Music 原生歌词，也可以导入本地 TTML。
+- 仅在 Apple Music 原生无歌词或只有纯文本时，按可配置的兜底顺序匹配网易云音乐、酷狗音乐和汽水音乐；原生已有逐行或逐字就直接使用。纯文本先展示，后台匹配到更高精度再替换；兜底优先逐字，其次逐行、纯文本，同精度保留原生。
 - 歌词音译、原生歌词机器翻译、TTML 下载和时间偏移调整。
 
 离线翻译 TTML 见 [TTML 翻译说明](docs/ttml-translation.md)。

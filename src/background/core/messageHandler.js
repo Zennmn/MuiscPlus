@@ -21,7 +21,7 @@ export class MessageHandler {
 
     const handlers = {
       BROWSER_FULLSCREEN: async () => sendResponse({ success: true, ...await browserFullscreen(message, sender) }),
-      [MESSAGE_TYPES.FETCH_LYRICS]: () => this.fetchLyrics(message, sendResponse),
+      [MESSAGE_TYPES.FETCH_LYRICS]: () => this.fetchLyrics(message, sendResponse, sender),
       [MESSAGE_TYPES.RESET_CACHE]: () => this.resetCache(message, sendResponse),
       [MESSAGE_TYPES.GET_CACHED_SIZE]: () => this.getCacheSize(sendResponse),
       [MESSAGE_TYPES.TRANSLATE_LYRICS]: () => this.translateLyrics(message, sendResponse),
@@ -32,7 +32,7 @@ export class MessageHandler {
       [MESSAGE_TYPES.FETCH_IMAGE]: () => this.fetchImage(message, sendResponse),
       [MESSAGE_TYPES.SAVE_LYRICS_OFFSET]: () => this.saveLyricsOffset(message, sendResponse),
       [MESSAGE_TYPES.GET_LYRICS_OFFSET]: () => this.getLyricsOffset(message, sendResponse),
-      [MESSAGE_TYPES.SWITCH_LYRICS_PROVIDER]: () => this.switchLyricsProvider(message, sendResponse),
+      [MESSAGE_TYPES.SWITCH_LYRICS_PROVIDER]: () => this.switchLyricsProvider(message, sendResponse, sender),
       [MESSAGE_TYPES.GET_AVAILABLE_PROVIDERS]: () => this.getAvailableLyricsProviders(message, sendResponse),
       [MESSAGE_TYPES.GET_DICTIONARY_STATUS]: () => this.getDictionaryStatus(message, sendResponse),
       [MESSAGE_TYPES.DOWNLOAD_DICTIONARY]: () => this.downloadDictionary(message, sendResponse),
@@ -53,15 +53,33 @@ export class MessageHandler {
     return true;
   }
 
-  static async fetchLyrics(message, sendResponse) {
+  static lyricsProgressOptions(message, sender) {
+    const api = globalThis.browser || globalThis.chrome;
+    if (!api?.tabs?.sendMessage || !Number.isInteger(sender?.tab?.id)
+      || typeof message.requestId !== 'string' || message.requestId.length > 200) return {};
+    return {
+      onProgress: lyrics => api.tabs.sendMessage(sender.tab.id, {
+        type: 'LYPLUS_LYRICS_PROGRESS', requestId: message.requestId, lyrics,
+        songInfo: { appleId: message.songInfo?.appleId, appleMusicLyricsLanguage: message.songInfo?.appleMusicLyricsLanguage }
+      }, sender.documentId ? { documentId: sender.documentId } : { frameId: sender.frameId || 0 })
+    };
+  }
+
+  static async fetchLyrics(message, sendResponse, sender) {
     try {
-      const { lyrics } = await LyricsService.getOrFetch(
+      if (message.rememberOnly) {
+        LyricsService.rememberNativeLyrics(message.songInfo);
+        sendResponse({ success: true });
+        return;
+      }
+      const { lyrics, pending } = await LyricsService.getOrFetch(
         message.songInfo,
         message.forceReload,
-        message.requestedSource
+        message.requestedSource,
+        this.lyricsProgressOptions(message, sender)
       );
       const availableProviders = await LyricsService.getAvailableProviders(message.songInfo);
-      sendResponse({ success: true, lyrics, metadata: message.songInfo, availableProviders });
+      sendResponse({ success: true, lyrics, pending: !!pending, metadata: message.songInfo, availableProviders });
     } catch (error) {
       sendResponse({ success: false, error: error.message, metadata: message.songInfo });
     }
@@ -342,9 +360,9 @@ export class MessageHandler {
     }
   }
 
-  static async switchLyricsProvider(message, sendResponse) {
+  static async switchLyricsProvider(message, sendResponse, sender) {
     try {
-      const result = await LyricsService.getProviderLyrics(message.songInfo, message.provider);
+      const result = await LyricsService.getProviderLyrics(message.songInfo, message.provider, this.lyricsProgressOptions(message, sender));
       if (!result?.lyrics) {
         sendResponse({ success: false, error: 'No lyrics available from this provider' });
         return;

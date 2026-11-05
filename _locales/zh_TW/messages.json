@@ -1351,5 +1351,29 @@
   },
   "playerFavoriteLoadFailed": {
     "message": "無法讀取喜好狀態，請點選星號重試。"
+  },
+  "lyricsSourceNetease": {
+    "message": "網易雲音樂"
+  },
+  "lyricsSourceKugou": {
+    "message": "酷狗音樂"
+  },
+  "lyricsSourceSoda": {
+    "message": "汽水音樂"
+  },
+  "categoryFallbackSourceOrder": {
+    "message": "歌詞備援來源"
+  },
+  "labelFallbackProviderOrder": {
+    "message": "備援來源優先順序"
+  },
+  "descFallbackSourceOrder": {
+    "message": "先執行主要來源組；僅在輪到 Apple Music 原生且原生為純文字或無歌詞時，依下列順序尋找逐字歌詞。原生已有逐行或逐字歌詞時直接使用，不觸發備援。純文字先顯示，背景比對到更高精度時替換；備援傳回逐行或純文字時會繼續尋找。優先順序為逐字 > 逐行 > 純文字；同精度保留原生，其餘依此組順序選擇。長按拖動排序，可新增或移除；全部移除即停用備援組，預設啟用全部三個來源。"
+  },
+  "descAppleMainSourceOrder": {
+    "message": "長按拖動排序。預設依序嘗試 AMLL、LunaBeat、AmLyrics；Apple Music 原生歌詞固定在主要來源組末位。"
+  },
+  "sourceNativeMainPinned": {
+    "message": "固定在主要來源組末位"
   }
 }

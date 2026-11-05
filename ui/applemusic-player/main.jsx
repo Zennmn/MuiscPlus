@@ -131,10 +131,13 @@ export function createPlayer(host, options = {}) {
   let lastArgs;
   let song = {};
   let settings = {};
-  let latency = 0;
   let offset = 0;
   let position = 0;
   let playback = {};
+  let lastSampleSequence = -1;
+  let lastTimelineRevision = null;
+  let snapshotRequestAt = -Infinity;
+  let snapshotRequestPending = false;
   let diagnosticReport;
   let downloadURL;
   let downloadTimer;
@@ -374,7 +377,7 @@ export function createPlayer(host, options = {}) {
   });
   setCallback('onClickControlThumbAtom', () => options.onClose?.());
   setCallback('onRequestOpenMenuAtom', toggleMenu);
-  setCallback('onLyricLineClickAtom', (event) => command('seek', seekPosition(event.line.getLine().startTime, latency, offset)));
+  setCallback('onLyricLineClickAtom', (event) => command('seek', seekPosition(event.line.getLine().startTime, 0, offset)));
   store.set(config.showBottomControlAtom, true);
   store.set(config.isLyricPageOpenedAtom, true);
   store.set(config.hideLyricViewAtom, false);
@@ -402,11 +405,69 @@ export function createPlayer(host, options = {}) {
     set('lyricSizePresetAtom', 'medium');
   }
 
-  function updateTick(seconds) {
+  const sampleClock = () => {
+    const origin = Number(performance.timeOrigin), now = Number(performance.now());
+    return Number.isFinite(origin) && Number.isFinite(now) ? origin + now : null;
+  };
+  const applyPosition = (seconds) => {
     if (!Number.isFinite(seconds) || destroyed) return;
     diagnostics.sampleTime(seconds);
     position = seconds;
     store.set(data.musicPlayingPositionAtom, Math.max(0, Math.round(seconds * 1000)));
+  };
+  function resetTimeBaseline() {
+    // The source sequence spans songs; keep its watermark when the song changes.
+    lastTimelineRevision = null;
+  }
+  function requestFreshSample() {
+    if (destroyed || snapshotRequestPending || typeof options.sendCommand !== 'function') return;
+    const now = performance.now();
+    if (now - snapshotRequestAt < 1000) return;
+    snapshotRequestAt = now;
+    snapshotRequestPending = true;
+    try {
+      Promise.resolve(options.sendCommand('snapshot'))
+        .catch(() => {})
+        .finally(() => { snapshotRequestPending = false; });
+    } catch (_) {
+      snapshotRequestPending = false;
+    }
+  }
+  function updateTick(seconds, sample) {
+    if (destroyed || !Number.isFinite(seconds)) return;
+    if (!sample || typeof sample !== 'object') { applyPosition(Math.max(0, seconds)); return; }
+    const sequence = Number.isSafeInteger(sample.sampleSequence) ? sample.sampleSequence : null;
+    const revision = Number.isSafeInteger(sample.timelineRevision) ? sample.timelineRevision : null;
+    const sampledAt = Number(sample.sampledAt);
+    if (sequence === null || revision === null || !Number.isFinite(sampledAt)) return;
+    const expectedSong = song.appleId ? String(song.appleId) : null;
+    if (sample.songId !== undefined) {
+      const sampleSong = sample.songId === null ? null : String(sample.songId);
+      if (sampleSong !== expectedSong) return;
+    }
+    if (sequence <= lastSampleSequence) return;
+    if (lastTimelineRevision !== null && revision < lastTimelineRevision) return;
+    const revisionChanged = lastTimelineRevision === null || revision !== lastTimelineRevision;
+    lastSampleSequence = sequence;
+    const raw = Math.max(0, seconds);
+    const clock = sampleClock();
+    const age = clock === null ? null : clock - sampledAt;
+    const rate = Number(sample.playbackRate);
+    const playbackRate = Number.isFinite(rate) && rate > 0 ? rate : 1;
+    const advancing = sample.isAdvancing === true && sample.isPlaying === true
+      && sample.isSeeking !== true && sample.isBuffering !== true;
+    let next = raw;
+    if (advancing && age !== null && age >= 0 && age <= 250) {
+      next = raw + Math.min(age, 100) * playbackRate / 1000;
+      // Hold tiny same-revision backward jitter from changing message age; a real seek changes revision.
+      if (!revisionChanged && next < position && position - next <= 0.12) next = position;
+    } else if (age !== null && (age > 250 || age < -5)) {
+      // Stale or implausibly future: never move the timeline with this sample.
+      requestFreshSample();
+      return;
+    }
+    lastTimelineRevision = revision;
+    applyPosition(next);
   }
 
   function updateSong(info = {}) {
@@ -420,6 +481,7 @@ export function createPlayer(host, options = {}) {
       offset = 0;
       store.set(data.musicLyricLinesAtom, []);
       patchView({ status: 'loading', providers: [], providerPreference: 'auto', offset: 0, translating: false, plain: null, source: '', displayFeedback: {}, isFavorited: null, canFavorite: false, favoriteBusy: false });
+      resetTimeBaseline();
       updateTick(0);
     }
     song = info;
@@ -439,10 +501,9 @@ export function createPlayer(host, options = {}) {
   function displayLyrics(...args) {
     if (destroyed) return;
     diagnostics.finish('lyrics-updated');
-    const [lyrics, songInfo, displayMode = 'none', currentSettings = {}, , , largerTextMode = 'lyrics', offsetLatency = 0, , , , userOffsetMs = 0] = args;
+    const [lyrics, songInfo, displayMode = 'none', currentSettings = {}, , , largerTextMode = 'lyrics', , , , , userOffsetMs = 0] = args;
     updateSong(songInfo);
     lastArgs = args;
-    latency = Number(offsetLatency) || 0;
     offset = Number(userOffsetMs) || 0;
     applySettings({ ...currentSettings, largerTextMode, displayMode });
     const lines = convertLyrics(lyrics, settings);
@@ -600,7 +661,7 @@ export function createPlayer(host, options = {}) {
       style={{ '--lyplus-player-font': view.fontFamily || undefined }} data-custom-font={view.fontFamily ? 'true' : undefined}>
       <PrebuiltLyricPlayer
         className="lyplus-amll-layout"
-        lyricTimeOffsetMs={latency * 1000 + view.offset}
+        lyricTimeOffsetMs={view.offset}
         onPlaylistClick={toggleQueue}
         onAirPlayClick={() => command('airplay')}
         favoriteButtonSlot={<ToggleIconButton
@@ -724,7 +785,10 @@ export function createPlayer(host, options = {}) {
       }
       if (!state.isPlaying) diagnostics.finish('paused');
       if (!store.get(viewAtom).connected) patchView({ connected: true });
-      updateTick(state.currentTime);
+      const hasSample = Number.isFinite(state.sampledAt)
+        && Number.isSafeInteger(state.sampleSequence) && Number.isSafeInteger(state.timelineRevision);
+      if (hasSample) updateTick(state.currentTime, state);
+      else updateTick(state.currentTime);
       store.set(data.musicPlayingAtom, !!state.isPlaying);
       if (Number.isFinite(state.duration)) store.set(data.musicDurationAtom, Math.max(0, state.duration * 1000));
       if (Number.isFinite(state.volume) && store.get(data.musicVolumeAtom) !== state.volume) store.set(data.musicVolumeAtom, state.volume);

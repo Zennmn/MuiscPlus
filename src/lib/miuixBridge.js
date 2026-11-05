@@ -14,8 +14,12 @@ import {
     updateSettings
 } from './settingsManager.js';
 import { readImportedFont } from './importedPlayerFont.js';
+import { normalizeFallbackLyricsOrder, FALLBACK_LYRICS_NAMES } from './appleLyricsSources.js';
 import {
     MIUIX_ACTIONS,
+    addFallbackLyricsProvider,
+    removeFallbackLyricsProvider,
+    setFallbackLyricsProviderOrder,
     addLyricsProvider,
     createSettingsExport,
     deletePlayerFontAsset,
@@ -188,6 +192,7 @@ function createSnapshot() {
         values[key] = settingsValueString(settings[key] ?? defaultSettings[key]);
     }
     values.__version = versionString();
+    values.appleMusicLyricsFallbackOrder = normalizeFallbackLyricsOrder(settings.appleMusicLyricsFallbackOrder).join(',');
     values.__fontId = String(settings.appleMusicPlayerFontFile?.id || '');
 
     let sourceOrder = [];
@@ -437,6 +442,9 @@ function convertRawValue(key, rawValue) {
 
 function applySettingDependencies(values) {
     const result = { ...values };
+    if (Object.hasOwn(result, 'appleMusicLyricsFallbackOrder')) {
+        result.appleMusicLyricsFallbackOrder = normalizeFallbackLyricsOrder(result.appleMusicLyricsFallbackOrder).join(',');
+    }
     if (Object.hasOwn(result, 'appleMusicLyricsProviderOrder')) {
         result.appleMusicLyricsProviderOrder = normalizeLyricsProviderOrder(
             result.appleMusicLyricsProviderOrder
@@ -476,6 +484,8 @@ function settingStatusAreas(key) {
         areas.push('advanced');
     } else if (key === 'appleMusicPlayerFont' || key === 'appleMusicPlayerFontFile') {
         areas.push('playerFont');
+    } else if (key === 'appleMusicLyricsFallbackOrder') {
+        areas.push('fallbackSources');
     } else if (key === 'appleMusicLyricsProviderOrder') {
         areas.push('sources');
     } else {
@@ -485,6 +495,9 @@ function settingStatusAreas(key) {
 }
 
 function savedSettingMessage(key) {
+    if (key === 'appleMusicLyricsProviderOrder' || key === 'appleMusicLyricsFallbackOrder') {
+        return translate('msgSourceOrderSaved', 'Lyrics source order saved.');
+    }
     if (settingStatusAreas(key).includes('translation')) {
         return translate(
             'msgTranslationSettingsSaved',
@@ -715,33 +728,39 @@ function finishTask(task, onSuccess, onError) {
 }
 
 function runLyricsSourceAction(action, payload) {
+    const fallback = action.startsWith('fallbackLyricsSources.');
+    const area = fallback ? 'fallbackSources' : 'sources';
+    const operation = action.split('.').pop();
+    const provider = typeof payload === 'string' ? payload : payload?.provider;
+    const nameKeys = { netease: 'lyricsSourceNetease', kugou: 'lyricsSourceKugou', soda: 'lyricsSourceSoda' };
+    const providerName = fallback
+        ? translate(nameKeys[provider], FALLBACK_LYRICS_NAMES[provider] || String(provider || ''))
+        : String(provider || '');
     let task;
     let success;
-    if (action === MIUIX_ACTIONS.REORDER_LYRICS_SOURCES) {
-        task = setLyricsProviderOrder(payload?.order ?? payload);
+    if (operation === 'reorder') {
+        task = fallback ? setFallbackLyricsProviderOrder(payload) : setLyricsProviderOrder(payload?.order ?? payload);
         success = translate('msgSourceOrderSaved', 'Lyrics source order saved.');
-    } else if (action === MIUIX_ACTIONS.ADD_LYRICS_SOURCE) {
-        const provider = typeof payload === 'string' ? payload : payload?.provider;
-        task = addLyricsProvider(provider);
+    } else if (operation === 'add') {
+        task = fallback ? addFallbackLyricsProvider(provider) : addLyricsProvider(provider);
         success = i18nMessage(
             'msgSourceAdded',
-            [String(provider || '')],
+            [providerName],
             'Lyrics source added.'
         );
     } else {
-        const provider = typeof payload === 'string' ? payload : payload?.provider;
-        task = removeLyricsProvider(provider);
+        task = fallback ? removeFallbackLyricsProvider(provider) : removeLyricsProvider(provider);
         success = i18nMessage(
             'msgSourceRemoved',
-            [String(provider || '')],
+            [providerName],
             'Lyrics source removed.'
         );
     }
     finishTask(
         task,
-        () => reportStatus(['sources'], success),
+        () => reportStatus([area], success),
         error => reportStatus(
-            ['sources'],
+            [area],
             errorMessage('msgSourceOrderSaveFailed', 'Could not save the lyrics source order.', error),
             { error: true }
         )
@@ -975,6 +994,7 @@ function reloadAppleMusic() {
 }
 
 function actionStatusAreas(action) {
+    if (action.startsWith('fallbackLyricsSources.')) return ['fallbackSources'];
     if (action.startsWith('lyricsSources.')) return ['sources'];
     if (action.startsWith('playerFont.')) return ['playerFont'];
     if (action.startsWith('dictionary.')) return ['translation'];
@@ -1099,6 +1119,9 @@ function perform(action, argument) {
             name === MIUIX_ACTIONS.REORDER_LYRICS_SOURCES
             || name === MIUIX_ACTIONS.ADD_LYRICS_SOURCE
             || name === MIUIX_ACTIONS.REMOVE_LYRICS_SOURCE
+            || name === MIUIX_ACTIONS.REORDER_FALLBACK_LYRICS_SOURCES
+            || name === MIUIX_ACTIONS.ADD_FALLBACK_LYRICS_SOURCE
+            || name === MIUIX_ACTIONS.REMOVE_FALLBACK_LYRICS_SOURCE
         ) {
             runLyricsSourceAction(name, payload);
             return;

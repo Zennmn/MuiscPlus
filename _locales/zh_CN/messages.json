@@ -1351,5 +1351,29 @@
   },
   "playerFavoriteLoadFailed": {
     "message": "无法读取收藏状态，请点击星标重试。"
+  },
+  "lyricsSourceNetease": {
+    "message": "网易云音乐"
+  },
+  "lyricsSourceKugou": {
+    "message": "酷狗音乐"
+  },
+  "lyricsSourceSoda": {
+    "message": "汽水音乐"
+  },
+  "categoryFallbackSourceOrder": {
+    "message": "歌词兜底来源"
+  },
+  "labelFallbackProviderOrder": {
+    "message": "兜底来源优先顺序"
+  },
+  "descFallbackSourceOrder": {
+    "message": "主来源组先执行；仅在轮到 Apple Music 原生且原生为纯文本或无歌词时，按下列顺序查找逐字歌词。原生已有逐行或逐字歌词时直接使用，不触发兜底。纯文本先展示，后台匹配到更高精度时替换；兜底返回逐行或纯文本时会继续查找。优先级为逐字 > 逐行 > 纯文本；同精度保留原生，其余按此组顺序选择。长按拖动排序，可添加或移除；全部移除即关闭兜底组，默认启用全部三个来源。"
+  },
+  "descAppleMainSourceOrder": {
+    "message": "长按拖动排序。默认依次尝试 AMLL、LunaBeat、AmLyrics；Apple Music 原生歌词固定在主来源组末位。"
+  },
+  "sourceNativeMainPinned": {
+    "message": "固定在主来源组末位"
   }
 }

@@ -4,6 +4,7 @@ globalThis.LYPLUS_DEFAULT_SETTINGS = Object.freeze({
     isEnabled: true,
     appleMusicAMLL: true,
     appleMusicLyricsProviderOrder: 'amll,lunabeat,amlyrics,applemusic',
+    appleMusicLyricsFallbackOrder: 'netease,kugou,soda',
     appleMusicAMLLBackground: true,
     appleMusicDisplayMode: 'none',
     appleMusicTitleCorrection: 'off',

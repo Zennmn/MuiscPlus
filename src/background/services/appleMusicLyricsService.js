@@ -1,7 +1,8 @@
 import { parseAMLLLyrics } from '../utils/amllParser.js';
 import { Utilities } from '../utils/utilities.js';
+import { FallbackLyricsService } from './fallbackLyricsService.js';
 
-import { APPLE_LYRICS_ORDER, APPLE_LYRICS_NAMES, normalizeAppleLyricsOrder } from '../../lib/appleLyricsSources.js';
+import { APPLE_LYRICS_ORDER, APPLE_LYRICS_NAMES, FALLBACK_LYRICS_ORDER, normalizeAppleLyricsOrder } from '../../lib/appleLyricsSources.js';
 export { APPLE_LYRICS_ORDER, APPLE_LYRICS_NAMES };
 const AMLL = 'https://raw.githubusercontent.com/amll-dev/amll-ttml-db/main/';
 const HUB = 'https://2755337087.github.io/ttml-hub/';
@@ -23,6 +24,7 @@ export class AppleMusicLyricsService {
   constructor({ request = (...args) => fetch(...args), storage = globalThis.chrome?.storage?.local || globalThis.browser?.storage?.local } = {}) {
     this.request = request;
     this.storage = storage;
+    this.fallback = new FallbackLyricsService({ request });
     this.indexes = new Map();
     this.pendingIndexes = new Map();
     this.results = new Map();
@@ -175,7 +177,9 @@ export class AppleMusicLyricsService {
     return this.parse(resource.value, provider, resource.sourceHash);
   }
 
-  async provider(provider, song, force = false, { cacheResults = true } = {}) {
+  async provider(provider, song, force = false, options = {}) {
+    const { cacheResults = true } = options;
+    if (FALLBACK_LYRICS_ORDER.includes(provider)) return this.fallback.provider(provider, song, force, options);
     if (provider === 'applemusic') {
       // Native TTML is language-specific. Never borrow another target language's cached track.
       const candidates = [song.appleMusicTTML, this.nativeLyrics.get(this.nativeKey(song))];
@@ -244,6 +248,9 @@ export class AppleMusicLyricsService {
     if (!cachedLyrics) return cachedLyrics;
     try {
       const provider = String(options.provider || cachedLyrics.provider || cachedLyrics.metadata?.provider || '').trim().toLowerCase();
+      if (FALLBACK_LYRICS_ORDER.includes(provider)) {
+        return await this.fallback.provider(provider, song, !!options.force, { ...options, cachedLyrics }) || cachedLyrics;
+      }
       if (!APPLE_LYRICS_ORDER.includes(provider)) return cachedLyrics;
       const cachedHash = normalizedSha256(cachedLyrics.sourceHash);
       if (provider === 'applemusic') {
@@ -272,6 +279,7 @@ export class AppleMusicLyricsService {
   async resolve(song, force = false, order, options = {}) {
     for (const provider of normalizeAppleLyricsOrder(order)) {
       const lyrics = await this.provider(provider, song, force, options);
+      if (provider === 'applemusic') return lyrics;
       if (lyrics) return lyrics;
     }
     throw new Error('No lyrics found from AMLL, LunaBeat, AmLyrics or Apple Music');
@@ -287,7 +295,8 @@ export class AppleMusicLyricsService {
     this.nativeLyrics.set(key, song.appleMusicTTML);
   }
 
-  clearResultCache() {
+  clearResultCache(clearFallback = true) {
+    if (clearFallback) this.fallback.clear();
     this.generation++;
     this.results.clear();
     this.pending.clear();

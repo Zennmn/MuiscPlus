@@ -65,6 +65,8 @@
                 clearTimeout(timeout);
                 for (const pending of queue.splice(0)) send(pending);
                 options.onReady?.();
+                // Cold-frame initialization can outlive the queued media sample.
+                try { await options.sendCommand?.('snapshot'); } catch (_) { }
                 return;
             }
             if (message.kind !== 'action' || !Number.isSafeInteger(message.id) || !Array.isArray(message.args)) return;

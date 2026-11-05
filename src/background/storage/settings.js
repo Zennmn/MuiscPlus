@@ -29,6 +29,7 @@ export class SettingsManager {
   static async getLyricsSettings() {
     const settings = await this.get({
       'appleMusicLyricsProviderOrder': defaults.appleMusicLyricsProviderOrder,
+      'appleMusicLyricsFallbackOrder': defaults.appleMusicLyricsFallbackOrder,
       'cacheStrategy': defaults.cacheStrategy
     });
     settings.cacheStrategy = settings.cacheStrategy === 'none' ? 'none' : 'bounded';

@@ -101,14 +101,12 @@ object SettingsPlaybackActions {
 }
 
 private const val NATIVE_LYRICS_SOURCE = "applemusic"
-private const val LYRICS_SOURCES_REORDER = "lyricsSources.reorder"
-private const val LYRICS_SOURCES_ADD = "lyricsSources.add"
-private const val LYRICS_SOURCES_REMOVE = "lyricsSources.remove"
 private const val TTML_TRANSLATION_GUIDE =
     "https://github.com/Zennmn/MuiscPlus/blob/main/docs/ttml-translation.md"
 
 private val allLyricsSources = listOf("amll", "lunabeat", "amlyrics", NATIVE_LYRICS_SOURCE)
 private val defaultLyricsSources = allLyricsSources
+private val fallbackLyricsSources = listOf("netease", "kugou", "soda")
 
 private data class Choice(val value: String, val label: String)
 
@@ -240,14 +238,69 @@ fun PlaybackSection(
     }
 }
 
-/** Lyrics-source ordering. Apple Music is always displayed and saved last. */
+/** Independent source groups; only the main group pins Apple Music. */
 @Composable
 fun SourcesSection(
     state: SettingsState,
     tr: (String, String) -> String,
     actions: SettingsActions,
 ) {
-    val incoming = lyricsSourceOrder(state)
+    SettingsPage(
+        introduction = tr(
+            "sourcesAppleOnlyNote",
+            "Muisc+ works with Apple Music only. Local TTML and a source chosen in the player can override the automatic order for the current song.",
+        ),
+    ) {
+        LyricsSourceGroup(
+            incoming = lyricsSourceOrder(state),
+            allSources = allLyricsSources,
+            pinNative = true,
+            actionPrefix = "lyricsSources",
+            title = tr("categoryAppleSourceOrder", "Apple Music lyrics source order"),
+            label = tr("labelProviderOrder", "Lyrics source priority"),
+            description = tr(
+                "descAppleMainSourceOrder",
+                "Press and hold to reorder. AMLL, LunaBeat and AmLyrics are tried first by default; Apple Music's native lyrics stay last in this group.",
+            ),
+            tr = tr,
+            actions = actions,
+        )
+        StatusMessage(statusValue(state, "source-order-status", "add-provider-status", "sources", "sourceOrder"))
+        LyricsSourceGroup(
+            incoming = normalizeLyricsSources(
+                state.value("appleMusicLyricsFallbackOrder", "netease,kugou,soda").split(',').map(String::trim),
+                fallbackLyricsSources,
+                pinNative = false,
+            ),
+            allSources = fallbackLyricsSources,
+            pinNative = false,
+            actionPrefix = "fallbackLyricsSources",
+            title = tr("categoryFallbackSourceOrder", "Fallback lyrics sources"),
+            label = tr("labelFallbackProviderOrder", "Fallback source priority"),
+            description = tr(
+                "descFallbackSourceOrder",
+                "Only when the main group reaches Apple Music and native lyrics are plain text or unavailable, try this group in order for word timing. Native line or word timing is used directly without fallback. Show plain text first and replace it when a more precise match arrives in the background. Keep searching after line-timed or plain-text fallback results. Prefer word timing, then line timing, then plain text; native lyrics win at equal precision, otherwise this order breaks ties. Press and hold to reorder, or add/remove sources. Removing all sources disables this group; the default enables all three.",
+            ),
+            tr = tr,
+            actions = actions,
+        )
+        StatusMessage(statusValue(state, "fallbackSources"))
+    }
+}
+
+/** Shared ordering, long-press gesture, keyboard controls and add/remove UI. */
+@Composable
+private fun LyricsSourceGroup(
+    incoming: List<String>,
+    allSources: List<String>,
+    pinNative: Boolean,
+    actionPrefix: String,
+    title: String,
+    label: String,
+    description: String,
+    tr: (String, String) -> String,
+    actions: SettingsActions,
+) {
     val draftOrder = remember { mutableStateOf(incoming) }
     val lastAcceptedHostOrder = remember { mutableStateOf(incoming) }
     val pendingExternalOrder = remember { mutableStateOf<List<String>?>(null) }
@@ -274,11 +327,11 @@ fun SourcesSection(
     }
 
     fun submitOrder(order: List<String>) {
-        val normalized = normalizeLyricsSources(order)
+        val normalized = normalizeLyricsSources(order, allSources, pinNative)
         draftOrder.value = normalized
         submittedOrders.value = (submittedOrders.value.filter { it != normalized } + listOf(normalized)).takeLast(8)
         awaitingOrder.value = normalized
-        currentActions.value.call(LYRICS_SOURCES_REORDER, normalized.joinToString(","))
+        currentActions.value.call("$actionPrefix.reorder", normalized.joinToString(","))
     }
 
     fun completeDrag(save: Boolean) {
@@ -300,13 +353,13 @@ fun SourcesSection(
             return
         }
 
-        val next = normalizeLyricsSources(draftOrder.value)
+        val next = normalizeLyricsSources(draftOrder.value, allSources, pinNative)
         draftOrder.value = next
         if (next != dragSnapshot.value) submitOrder(next)
     }
 
     fun moveSourceWithKeyboard(provider: String, offset: Int) {
-        val next = moveLyricsSource(draftOrder.value, provider, offset) ?: return
+        val next = moveLyricsSource(draftOrder.value, provider, offset, allSources, pinNative) ?: return
         submitOrder(next)
     }
 
@@ -332,8 +385,8 @@ fun SourcesSection(
         }
     }
 
-    val availableSources = allLyricsSources.filter {
-        it != NATIVE_LYRICS_SOURCE && it !in draftOrder.value
+    val availableSources = allSources.filter {
+        (!pinNative || it != NATIVE_LYRICS_SOURCE) && it !in draftOrder.value
     }
     var selectedProvider by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(availableSources) {
@@ -342,198 +395,186 @@ fun SourcesSection(
         }
     }
 
-    SettingsPage(
-        introduction = tr(
-            "sourcesAppleOnlyNote",
-            "Choose the order in which Muisc+ searches for lyrics on Apple Music.",
-        ),
-    ) {
-        SettingsCategory(title = tr("categoryAppleSourceOrder", "Apple Music lyrics source order")) {
-            Text(
-                text = tr("labelProviderOrder", "Lyrics source priority"),
-                style = MiuixTheme.textStyles.title3,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = tr(
-                    "descAppleSourceOrder",
-                    "AMLL is tried first by default, then LunaBeat, AmLyrics, and Apple Music's native lyrics. Apple Music always stays last.",
-                ),
-                style = MiuixTheme.textStyles.footnote1,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Spacer(Modifier.size(12.dp))
+    SettingsCategory(title = title) {
+        Text(
+            text = label,
+            style = MiuixTheme.textStyles.title3,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = description,
+            style = MiuixTheme.textStyles.footnote1,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(Modifier.size(12.dp))
 
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val compactControls = maxWidth < 520.dp
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val compactControls = maxWidth < 520.dp
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 2.dp, vertical = 4.dp)
-                            .onGloballyPositioned { listCoordinates[0] = it }
-                            .pointerInput(Unit) {
-                                awaitEachGesture {
-                                    val down = awaitFirstDown(
-                                        requireUnconsumed = false,
-                                        pass = PointerEventPass.Initial,
-                                    )
-                                    val coordinates = listCoordinates[0] ?: return@awaitEachGesture
-                                    val downRoot = coordinates.localToRoot(down.position)
-                                    val initialOrder = draftOrder.value
-                                    val provider = initialOrder.firstOrNull { candidate ->
-                                        candidate != NATIVE_LYRICS_SOURCE &&
-                                            rowBounds[candidate]?.contains(downRoot) == true
-                                    } ?: return@awaitEachGesture
-                                    // Let child buttons claim the press before starting a long press.
-                                    val finalDown = awaitPointerEvent(PointerEventPass.Final)
-                                        .changes.firstOrNull { it.id == down.id }
-                                    if (finalDown == null || !finalDown.pressed || finalDown.isConsumed) {
-                                        return@awaitEachGesture
-                                    }
-                                    val longPress = awaitLongPressOrCancellation(down.id)
-                                        ?: return@awaitEachGesture
-                                    if (provider !in draftOrder.value) return@awaitEachGesture
-                                    val currentCoordinates = listCoordinates[0] ?: return@awaitEachGesture
-                                    val rowCenter = rowBounds[provider]?.center?.y ?: return@awaitEachGesture
-                                    val grabOffset = rowCenter - currentCoordinates.localToRoot(longPress.position).y
-                                    val centers = draftOrder.value
-                                        .filter { it != NATIVE_LYRICS_SOURCE }
-                                        .mapNotNull { rowBounds[it]?.center?.y }
-                                    if (centers.size != draftOrder.value.size - 1) return@awaitEachGesture
-                                    val minCenter = centers.first()
-                                    val maxCenter = centers.last()
-                                    dragSnapshot.value = draftOrder.value
-                                    pendingExternalOrder.value = null
-                                    dragSlotCenters.value = centers
-                                    draggedCenterY.value = rowCenter
-                                    draggingProvider.value = provider
-                                    longPress.consume()
-
-                                    var finished = false
-                                    try {
-                                        while (true) {
-                                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                                            val change = event.changes.firstOrNull { it.id == longPress.id } ?: break
-                                            if (!change.pressed) {
-                                                latestCompleteDrag.value(true)
-                                                finished = true
-                                                change.consume()
-                                                break
-                                            }
-                                            if (change.isConsumed) break
-
-                                            val coordinatesNow = listCoordinates[0] ?: break
-                                            val pointer = coordinatesNow.localToRoot(change.position)
-                                            val centerY = (pointer.y + grabOffset).coerceIn(minCenter, maxCenter)
-                                            draggedCenterY.value = centerY
-
-                                            val next = reorderLyricsSourceAt(
-                                                order = draftOrder.value,
-                                                provider = provider,
-                                                pointerCenterY = centerY,
-                                                slotCenters = centers,
-                                            )
-                                            if (next != draftOrder.value) draftOrder.value = next
-                                            change.consume()
-                                        }
-                                    } finally {
-                                        if (!finished) latestCompleteDrag.value(false)
-                                    }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 2.dp, vertical = 4.dp)
+                        .onGloballyPositioned { listCoordinates[0] = it }
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial,
+                                )
+                                val coordinates = listCoordinates[0] ?: return@awaitEachGesture
+                                val downRoot = coordinates.localToRoot(down.position)
+                                val initialOrder = draftOrder.value
+                                val provider = initialOrder.firstOrNull { candidate ->
+                                    (!pinNative || candidate != NATIVE_LYRICS_SOURCE) &&
+                                        rowBounds[candidate]?.contains(downRoot) == true
+                                } ?: return@awaitEachGesture
+                                // Let child buttons claim the press before starting a long press.
+                                val finalDown = awaitPointerEvent(PointerEventPass.Final)
+                                    .changes.firstOrNull { it.id == down.id }
+                                if (finalDown == null || !finalDown.pressed || finalDown.isConsumed) {
+                                    return@awaitEachGesture
                                 }
-                            },
-                    ) {
-                        LookaheadScope {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .semantics {
-                                        collectionInfo = CollectionInfo(
-                                            rowCount = draftOrder.value.size,
-                                            columnCount = 1,
-                                        )
-                                    },
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                draftOrder.value.forEachIndexed { index, provider ->
-                                    key(provider) {
-                                        val dragging = draggingProvider.value == provider
-                                        val desiredOffset = if (dragging) {
-                                            val slotCenter = dragSlotCenters.value.getOrNull(index) ?: draggedCenterY.value
-                                            draggedCenterY.value - slotCenter
-                                        } else {
-                                            0f
+                                val longPress = awaitLongPressOrCancellation(down.id)
+                                    ?: return@awaitEachGesture
+                                if (provider !in draftOrder.value) return@awaitEachGesture
+                                val currentCoordinates = listCoordinates[0] ?: return@awaitEachGesture
+                                val rowCenter = rowBounds[provider]?.center?.y ?: return@awaitEachGesture
+                                val grabOffset = rowCenter - currentCoordinates.localToRoot(longPress.position).y
+                                val centers = draftOrder.value
+                                    .filter { !pinNative || it != NATIVE_LYRICS_SOURCE }
+                                    .mapNotNull { rowBounds[it]?.center?.y }
+                                if (centers.isEmpty() || centers.size != draftOrder.value.count { !pinNative || it != NATIVE_LYRICS_SOURCE }) return@awaitEachGesture
+                                val minCenter = centers.first()
+                                val maxCenter = centers.last()
+                                dragSnapshot.value = draftOrder.value
+                                pendingExternalOrder.value = null
+                                dragSlotCenters.value = centers
+                                draggedCenterY.value = rowCenter
+                                draggingProvider.value = provider
+                                longPress.consume()
+
+                                var finished = false
+                                try {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        val change = event.changes.firstOrNull { it.id == longPress.id } ?: break
+                                        if (!change.pressed) {
+                                            latestCompleteDrag.value(true)
+                                            finished = true
+                                            change.consume()
+                                            break
                                         }
-                                        val offset by animateFloatAsState(
-                                            targetValue = desiredOffset,
-                                            animationSpec = if (dragging) snap() else spring(stiffness = 700f),
-                                            label = "source-drag-offset",
+                                        if (change.isConsumed) break
+
+                                        val coordinatesNow = listCoordinates[0] ?: break
+                                        val pointer = coordinatesNow.localToRoot(change.position)
+                                        val centerY = (pointer.y + grabOffset).coerceIn(minCenter, maxCenter)
+                                        draggedCenterY.value = centerY
+
+                                        val next = reorderLyricsSourceAt(
+                                            order = draftOrder.value,
+                                            provider = provider,
+                                            pointerCenterY = centerY,
+                                            slotCenters = centers,
+                                            allSources = allSources,
+                                            pinNative = pinNative,
                                         )
-                                        val scale by animateFloatAsState(
-                                            targetValue = if (dragging) 1.015f else 1f,
-                                            animationSpec = tween(160),
-                                            label = "source-drag-scale",
-                                        )
+                                        if (next != draftOrder.value) draftOrder.value = next
+                                        change.consume()
+                                    }
+                                } finally {
+                                    if (!finished) latestCompleteDrag.value(false)
+                                }
+                            }
+                        },
+                ) {
+                    LookaheadScope {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics {
+                                    collectionInfo = CollectionInfo(
+                                        rowCount = draftOrder.value.size,
+                                        columnCount = 1,
+                                    )
+                                },
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            draftOrder.value.forEachIndexed { index, provider ->
+                                key(provider) {
+                                    val dragging = draggingProvider.value == provider
+                                    val desiredOffset = if (dragging) {
+                                        val slotCenter = dragSlotCenters.value.getOrNull(index) ?: draggedCenterY.value
+                                        draggedCenterY.value - slotCenter
+                                    } else {
+                                        0f
+                                    }
+                                    val offset by animateFloatAsState(
+                                        targetValue = desiredOffset,
+                                        animationSpec = if (dragging) snap() else spring(stiffness = 700f),
+                                        label = "source-drag-offset",
+                                    )
+                                    val scale by animateFloatAsState(
+                                        targetValue = if (dragging) 1.015f else 1f,
+                                        animationSpec = tween(160),
+                                        label = "source-drag-scale",
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .then(
+                                                if (dragging) Modifier
+                                                else Modifier.animateBounds(this@LookaheadScope),
+                                            )
+                                            .onGloballyPositioned { rowBounds[provider] = it.boundsInRoot() }
+                                            .zIndex(if (dragging || abs(offset) > 0.5f) 1f else 0f),
+                                    ) {
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .then(
-                                                    if (dragging) Modifier
-                                                    else Modifier.animateBounds(this@LookaheadScope),
-                                                )
-                                                .onGloballyPositioned { rowBounds[provider] = it.boundsInRoot() }
-                                                .zIndex(if (dragging || abs(offset) > 0.5f) 1f else 0f),
+                                                .graphicsLayer {
+                                                    translationY = offset
+                                                    scaleY = scale
+                                                },
                                         ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .graphicsLayer {
-                                                        translationY = offset
-                                                        scaleY = scale
-                                                    },
-                                            ) {
-                                                LyricsSourceRow(
-                                                    provider = provider,
-                                                    order = draftOrder.value,
-                                                    index = index,
-                                                    dragging = dragging,
-                                                    tr = tr,
-                                                    onMove = ::moveSourceWithKeyboard,
-                                                    onRemove = { currentActions.value.call(LYRICS_SOURCES_REMOVE, provider) },
-                                                )
-                                            }
+                                            LyricsSourceRow(
+                                                provider = provider,
+                                                order = draftOrder.value,
+                                                index = index,
+                                                dragging = dragging,
+                                                tr = tr,
+                                                onMove = ::moveSourceWithKeyboard,
+                                                onRemove = { currentActions.value.call("$actionPrefix.remove", provider) },
+                                            )
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                }
 
-                    if (availableSources.isNotEmpty()) {
-                        SourceAddControls(
-                            availableSources = availableSources,
-                            selectedProvider = selectedProvider,
-                            compact = compactControls,
-                            tr = tr,
-                            onSelectedProviderChange = { selectedProvider = it },
-                            onAdd = {
-                                val provider = selectedProvider
-                                if (provider != null) {
-                                    selectedProvider = null
-                                    currentActions.value.call(LYRICS_SOURCES_ADD, provider)
-                                }
-                            },
-                        )
-                    }
+                if (availableSources.isNotEmpty()) {
+                    SourceAddControls(
+                        availableSources = availableSources,
+                        selectedProvider = selectedProvider,
+                        compact = compactControls,
+                        tr = tr,
+                        onSelectedProviderChange = { selectedProvider = it },
+                        onAdd = {
+                            val provider = selectedProvider
+                            if (provider != null) {
+                                selectedProvider = null
+                                currentActions.value.call("$actionPrefix.add", provider)
+                            }
+                        },
+                    )
                 }
             }
         }
-
-        StatusMessage(
-            statusValue(state, "source-order-status", "add-provider-status", "sources", "sourceOrder"),
-        )
     }
 }
 
@@ -548,13 +589,13 @@ private fun LyricsSourceRow(
     onRemove: () -> Unit,
 ) {
     val native = provider == NATIVE_LYRICS_SOURCE
-    val name = lyricsSourceName(provider)
+    val name = lyricsSourceName(provider, tr)
     val dragHint = tr("sourceDragHandle", "Press and hold to reorder")
-    val pinnedDescription = tr("sourceNativePinned", "Always used as the final fallback")
+    val pinnedDescription = tr("sourceNativeMainPinned", "Always last in the main group")
     val moveUpLabel = tr("sourceMoveUp", "Move up")
     val moveDownLabel = tr("sourceMoveDown", "Move down")
     val fromIndex = order.indexOf(provider)
-    val lastMovableIndex = order.lastIndex - 1
+    val lastMovableIndex = order.lastIndex - if (NATIVE_LYRICS_SOURCE in order) 1 else 0
     val canMoveUp = !native && fromIndex > 0
     val canMoveDown = !native && fromIndex in 0..<lastMovableIndex
     val customActions = buildList {
@@ -719,7 +760,7 @@ private fun SourceAddControls(
     onAdd: () -> Unit,
 ) {
     val selectedIndex = availableSources.indexOf(selectedProvider)
-    val items = availableSources.map(::lyricsSourceName)
+    val items = availableSources.map { lyricsSourceName(it, tr) }
     val dropdownTitle = tr("placeholderSelectSource", "Select source…")
     val pickerColors = CardDefaults.defaultColors(
         color = lerp(MiuixTheme.colorScheme.surfaceVariant, MiuixTheme.colorScheme.onSurface, 0.04f),
@@ -1260,19 +1301,24 @@ private fun lyricsSourceOrder(state: SettingsState): List<String> {
     return normalizeLyricsSources(selected)
 }
 
-private fun normalizeLyricsSources(order: List<String>): List<String> =
-    (order
-        .filter { it in allLyricsSources && it != NATIVE_LYRICS_SOURCE }
-        .distinct() + NATIVE_LYRICS_SOURCE)
+private fun normalizeLyricsSources(
+    order: List<String>,
+    allSources: List<String> = allLyricsSources,
+    pinNative: Boolean = true,
+): List<String> =
+    order.filter { it in allSources && (!pinNative || it != NATIVE_LYRICS_SOURCE) }
+        .distinct() + (if (pinNative) listOf(NATIVE_LYRICS_SOURCE) else emptyList())
 
 private fun moveLyricsSource(
     order: List<String>,
     provider: String,
     offset: Int,
+    allSources: List<String> = allLyricsSources,
+    pinNative: Boolean = true,
 ): List<String>? {
-    val normalized = normalizeLyricsSources(order)
+    val normalized = normalizeLyricsSources(order, allSources, pinNative)
     val from = normalized.indexOf(provider)
-    val lastMovableIndex = normalized.lastIndex - 1
+    val lastMovableIndex = normalized.lastIndex - if (pinNative) 1 else 0
     val to = from + offset
     if (from !in 0..lastMovableIndex || to !in 0..lastMovableIndex) return null
     return normalized.toMutableList().apply {
@@ -1286,9 +1332,11 @@ private fun reorderLyricsSourceAt(
     provider: String,
     pointerCenterY: Float,
     slotCenters: List<Float>,
+    allSources: List<String> = allLyricsSources,
+    pinNative: Boolean = true,
 ): List<String> {
-    val normalized = normalizeLyricsSources(order)
-    val movable = normalized.filter { it != NATIVE_LYRICS_SOURCE }
+    val normalized = normalizeLyricsSources(order, allSources, pinNative)
+    val movable = normalized.filter { !pinNative || it != NATIVE_LYRICS_SOURCE }
     val from = movable.indexOf(provider)
     if (from < 0 || slotCenters.size != movable.size) return normalized
 
@@ -1312,14 +1360,17 @@ private fun reorderLyricsSourceAt(
     return movable.toMutableList().apply {
         removeAt(from)
         add(to, provider)
-        add(NATIVE_LYRICS_SOURCE)
+        if (pinNative) add(NATIVE_LYRICS_SOURCE)
     }
 }
 
-private fun lyricsSourceName(provider: String): String = when (provider) {
+private fun lyricsSourceName(provider: String, tr: (String, String) -> String): String = when (provider) {
     "amll" -> "AMLL TTML DB"
     "lunabeat" -> "LunaBeat"
     "amlyrics" -> "AmLyrics"
     NATIVE_LYRICS_SOURCE -> "Apple Music"
+    "netease" -> tr("lyricsSourceNetease", "NetEase Cloud Music")
+    "kugou" -> tr("lyricsSourceKugou", "Kugou Music")
+    "soda" -> tr("lyricsSourceSoda", "Soda Music")
     else -> provider
 }

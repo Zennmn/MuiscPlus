@@ -23,6 +23,14 @@
   let favoriteWrite;
   let favoriteGeneration = 0;
   let favoriteReadError = null;
+  let timelineElement = null;
+  let timelineListeners = [];
+  let timelineBuffering = false;
+  let timelineBaseline = null;
+  let timelineBoundary = '';
+  let timelineRevision = 0;
+  let sampleSequence = 0;
+  let pendingSeeks = 0;
   const emit = (type, payload) => window.postMessage({ type, ...payload }, window.location.origin);
   const player = () => music?.player || music;
   const read = (key, fallback) => music?.[key] ?? player()?.[key] ?? fallback;
@@ -167,13 +175,76 @@
     };
   }
 
-  function getPreciseTime() {
+  function resetTimeline() {
+    timelineRevision++;
+    timelineBaseline = null;
+  }
+
+  function bindTimelineElement(element) {
+    if (element === timelineElement) return;
+    for (const [name, listener] of timelineListeners) timelineElement?.removeEventListener(name, listener);
+    timelineListeners = [];
+    timelineElement = element;
+    timelineBuffering = false;
+    resetTimeline();
+    if (!element?.addEventListener) return;
+    for (const name of ['waiting', 'stalled', 'emptied', 'error', 'playing', 'canplay', 'play', 'pause', 'ended', 'seeking', 'seeked', 'ratechange', 'loadedmetadata']) {
+      const listener = () => {
+        if (['waiting', 'emptied', 'error'].includes(name) || (name === 'stalled' && element.readyState < 3)) timelineBuffering = true;
+        else if (['playing', 'canplay', 'seeked', 'loadedmetadata'].includes(name)) timelineBuffering = false;
+        resetTimeline();
+        if (read('nowPlayingItem', null)?.attributes) syncSong();
+        publishState(true);
+      };
+      element.addEventListener(name, listener);
+      timelineListeners.push([name, listener]);
+    }
+  }
+
+  function getTimeSample() {
+    let element = null, currentTime, timestampOffset = 0;
     try {
       const active = music?.services?.mediaItemPlayback?._currentPlayer;
-      const element = active?._targetElement;
-      if (element && Number.isFinite(element.currentTime)) return Math.max(0, element.currentTime - (active._buffer?.currentTimestampOffset || 0));
+      const target = active?._targetElement;
+      const offset = Number(active?._buffer?.currentTimestampOffset ?? 0);
+      if (target && Number.isFinite(target.currentTime) && Number.isFinite(offset)) {
+        element = target;
+        timestampOffset = offset;
+        currentTime = Math.max(0, target.currentTime - offset);
+      }
     } catch (_) { /* Fall back to the public timeline if MusicKit internals change. */ }
-    return Math.max(0, Number(read('currentPlaybackTime', 0)) || 0);
+    if (!Number.isFinite(currentTime)) {
+      const publicTime = Number(read('currentPlaybackTime', 0));
+      currentTime = Number.isFinite(publicTime) ? Math.max(0, publicTime) : 0;
+    }
+    const sampledAt = performance.timeOrigin + performance.now();
+    bindTimelineElement(element);
+    const isPlaying = !!read('isPlaying', false);
+    const isSeeking = pendingSeeks > 0 || !!element?.seeking;
+    const isBuffering = !!element && (timelineBuffering || element.readyState < 3 || !!element.error);
+    const rate = Number(element?.playbackRate);
+    const playbackRate = Number.isFinite(rate) && rate > 0 ? rate : 1;
+    const timeSource = element ? 'media' : 'musickit';
+    const songId = songInfo?.appleId || null;
+    const boundary = JSON.stringify([songId, timeSource, timestampOffset, isPlaying, !!element?.paused, !!element?.ended, isSeeking, isBuffering, playbackRate, document.hidden]);
+    if (boundary !== timelineBoundary) { timelineBoundary = boundary; resetTimeline(); }
+    const previous = timelineBaseline;
+    const elapsed = previous ? sampledAt - previous.sampledAt : 0;
+    const delta = previous ? currentTime - previous.currentTime : 0;
+    const expected = elapsed * playbackRate / 1000;
+    const canAdvance = !!element && isPlaying && !element.paused && !element.ended && !isSeeking && !isBuffering && !document.hidden && rate > 0;
+    const discontinuity = !!previous && (elapsed < 0 || elapsed > 250 || delta < -0.001 || delta - expected > 0.15);
+    if (discontinuity) resetTimeline();
+    // An unpaused element is not sufficient evidence: confirm its clock actually moved.
+    // Briefly retain that evidence through repeated browser-rounded currentTime reads.
+    const moved = !!previous && !discontinuity && elapsed > 0 && delta > 0.000001
+      && Math.abs(delta - expected) <= Math.max(0.05, expected * 0.5);
+    const lastAdvanceAt = canAdvance && moved ? sampledAt
+      : canAdvance && !discontinuity ? previous?.lastAdvanceAt || 0 : 0;
+    const isAdvancing = canAdvance && lastAdvanceAt > 0 && sampledAt - lastAdvanceAt <= 50;
+    timelineBaseline = { currentTime, sampledAt, lastAdvanceAt };
+    return { songId, currentTime, sampledAt, sampleSequence: ++sampleSequence, timelineRevision,
+      isPlaying, isAdvancing, playbackRate, isSeeking, isBuffering, timeSource };
   }
 
   function getState() {
@@ -182,9 +253,8 @@
     const shuffleValue = read('shuffleMode', false);
     const shuffleEnums = window.MusicKit?.PlayerShuffleMode || { off: 0, songs: 1 };
     return {
-      songId: songInfo?.appleId || null, currentTime: getPreciseTime(), queueRevision,
+      ...getTimeSample(), queueRevision,
       duration: Number(read('currentPlaybackDuration', songInfo?.duration || 0)) || songInfo?.duration || 0,
-      isPlaying: !!read('isPlaying', false),
       volume: Math.max(0, Math.min(1, Number(read('volume', 1)) || 0)),
       shuffle: shuffleValue === true || shuffleValue === 'songs' || shuffleValue === shuffleEnums.songs,
       repeat: repeatValue === 'one' || repeatValue === repeatEnums.one ? 'one' : repeatValue === 'all' || repeatValue === repeatEnums.all ? 'all' : 'off',
@@ -198,9 +268,9 @@
     const state = getState();
     // While playing, the per-frame timeline already sends the precise time.
     // Do not broadcast a duplicate full control snapshot for a time-only event.
-    const { currentTime, ...controls } = state;
-    const serialized = JSON.stringify(state.isPlaying ? controls : state);
-    if (force || serialized !== lastState) { lastState = serialized; emit('LYPLUS_PLAYBACK_STATE', { state }); }
+    const { currentTime, sampledAt, sampleSequence, ...controls } = state;
+    const serialized = JSON.stringify(state.isPlaying ? controls : { ...controls, currentTime });
+    if (force || document.hidden || serialized !== lastState) { lastState = serialized; emit('LYPLUS_PLAYBACK_STATE', { state }); }
     updateFrame();
   }
 
@@ -214,8 +284,9 @@
     const loop = () => {
       frame = null;
       if (!read('isPlaying', false) || document.hidden) return;
-      emit('LYPLUS_TIME_UPDATE', { currentTime: getPreciseTime(), songId: songInfo?.appleId || null });
-      frame = requestAnimationFrame(loop);
+      if (read('nowPlayingItem', null)?.attributes) syncSong();
+      emit('LYPLUS_TIME_UPDATE', getTimeSample());
+      if (!frame) frame = requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop);
   }
@@ -415,7 +486,7 @@
     const changed = key !== songKey;
     songKey = key;
     if (!changed && songInfo) { emit('LYPLUS_SONG_SNAPSHOT', { songInfo }); return; }
-    if (changed) resetFavoriteState();
+    if (changed) { resetFavoriteState(); resetTimeline(); }
     const request = ++lyricRequest;
     pendingLyrics?.abort();
     const attrs = item?.attributes;
@@ -423,6 +494,7 @@
     const params = attrs.playParams || {};
     songInfo = {
       title: attrs.name || '', artist: attrs.artistName || '', album: attrs.albumName || '',
+      appleMusicLyricsPending: params.kind !== 'music-videos',
       duration: (Number(attrs.durationInMillis) || 0) / 1000,
       artwork: (attrs.artwork?.url || '').replaceAll('{w}', '800').replaceAll('{h}', '800'),
       appleId: String(params.catalogId || params.id || item.id), isVideo: params.kind === 'music-videos', appleMusicLyricsLanguage: lyricsLanguage,
@@ -434,8 +506,8 @@
       const id = songInfo.appleId;
       readFavoriteState(id);
       fetchNativeLyrics(id).then(ttml => {
-        if (!ttml || request !== lyricRequest || songInfo?.appleId !== id) return;
-        songInfo = { ...songInfo, appleMusicTTML: ttml, appleMusicLyricsLanguage: lyricsLanguage };
+        if (request !== lyricRequest || songInfo?.appleId !== id) return;
+        songInfo = { ...songInfo, appleMusicTTML: ttml || undefined, appleMusicLyricsPending: false, appleMusicLyricsLanguage: lyricsLanguage };
         emit('LYPLUS_NATIVE_LYRICS', { songInfo });
       });
     }
@@ -456,11 +528,11 @@
       nativeLyricsRequest = null;
       const request = ++lyricRequest;
       const id = songInfo?.appleId;
-      if (songInfo) songInfo = { ...songInfo, appleMusicTTML: undefined, appleMusicLyricsLanguage: lyricsLanguage };
+      if (songInfo) songInfo = { ...songInfo, appleMusicTTML: undefined, appleMusicLyricsPending: !songInfo.isVideo, appleMusicLyricsLanguage: lyricsLanguage };
       if (!id || songInfo.isVideo) return;
       const ttml = await fetchNativeLyrics(id);
       if (request !== lyricRequest || songInfo?.appleId !== id) return;
-      songInfo = { ...songInfo, appleMusicTTML: ttml || undefined, appleMusicLyricsLanguage: lyricsLanguage };
+      songInfo = { ...songInfo, appleMusicTTML: ttml || undefined, appleMusicLyricsPending: false, appleMusicLyricsLanguage: lyricsLanguage };
       emit('LYPLUS_NATIVE_LYRICS', { songInfo });
       return;
     }
@@ -473,7 +545,7 @@
       const ttml = current.appleMusicTTML || await fetchNativeLyrics(current.appleId);
       if (request !== lyricRequest || songInfo?.appleId !== current.appleId) throw new Error('nativeTTMLSongChanged');
       if (typeof ttml !== 'string' || !/<(?:\w+:)?tt[\s>]/.test(ttml)) throw new Error('nativeTTMLUnavailable');
-      songInfo = { ...songInfo, appleMusicTTML: ttml, appleMusicLyricsLanguage: lyricsLanguage };
+      songInfo = { ...songInfo, appleMusicTTML: ttml, appleMusicLyricsPending: false, appleMusicLyricsLanguage: lyricsLanguage };
       return { ttml, appleId: current.appleId, title: current.title, artist: current.artist };
     }
     if (command === 'catalogMetadata') {
@@ -596,7 +668,11 @@
       if (!target) throw new Error('This playback control is unavailable');
       if (command === 'seek') {
         if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new Error('Invalid playback position');
-        await target[name](Math.min(value, getState().duration || value));
+        pendingSeeks++;
+        resetTimeline();
+        publishState(true);
+        try { await target[name](Math.min(value, getState().duration || value)); }
+        finally { pendingSeeks--; resetTimeline(); syncSong(); publishState(true); }
       } else { await target[name](); }
     } else if (command === 'volume') {
       if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('Invalid volume');
@@ -647,6 +723,7 @@
     setTimeout(waitForMusicKit, 500);
   }
   document.addEventListener('visibilitychange', () => {
+    resetTimeline();
     publishState(true);
     if (!document.hidden) readFavoriteState();
   });
@@ -660,6 +737,8 @@
     pendingStorefront?.abort();
     pendingMetadata?.abort();
     favoriteRead?.controller?.abort();
+    for (const [name, listener] of timelineListeners) timelineElement?.removeEventListener(name, listener);
+    timelineListeners = [];
     for (const [name, listener] of subscriptions) music?.removeEventListener?.(name, listener);
   }, { once: true });
   waitForMusicKit();
