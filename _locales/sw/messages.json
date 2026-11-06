@@ -217,10 +217,10 @@
     "message": "Auto"
   },
   "optionLLMThinkingFormatDeepSeek": {
-    "message": "DeepSeek"
+    "message": "thinking.type + reasoning_effort"
   },
   "optionLLMThinkingFormatOpenRouter": {
-    "message": "OpenRouter"
+    "message": "reasoning.enabled + reasoning.effort"
   },
   "optionLLMThinkingFormatNone": {
     "message": "None (server default)"

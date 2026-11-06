@@ -244,10 +244,10 @@
     "message": "自动识别"
   },
   "optionLLMThinkingFormatDeepSeek": {
-    "message": "DeepSeek"
+    "message": "thinking.type + reasoning_effort"
   },
   "optionLLMThinkingFormatOpenRouter": {
-    "message": "OpenRouter"
+    "message": "reasoning.enabled + reasoning.effort"
   },
   "optionLLMThinkingFormatNone": {
     "message": "不发送（服务端默认）"

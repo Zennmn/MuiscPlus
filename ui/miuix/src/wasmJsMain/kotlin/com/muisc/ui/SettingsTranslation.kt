@@ -75,8 +75,8 @@ private val TransliterationTargetCodes = TransliterationTargetChoices.map { it.v
 
 private val ThinkingFormatChoices = listOf(
     LocalizedChoice("auto", "optionLLMThinkingFormatAuto", "Auto"),
-    LocalizedChoice("deepseek", "optionLLMThinkingFormatDeepSeek", "DeepSeek"),
-    LocalizedChoice("openrouter", "optionLLMThinkingFormatOpenRouter", "OpenRouter"),
+    LocalizedChoice("deepseek", "optionLLMThinkingFormatDeepSeek", "thinking.type + reasoning_effort"),
+    LocalizedChoice("openrouter", "optionLLMThinkingFormatOpenRouter", "reasoning.enabled + reasoning.effort"),
     LocalizedChoice("none", "optionLLMThinkingFormatNone", "None (server default)"),
 )
 private val ThinkingFormatCodes = ThinkingFormatChoices.map { it.value }.toSet()
