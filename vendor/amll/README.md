@@ -6,6 +6,8 @@ Local runtime snapshot: `f32285864056587c4afa59d310208b0aa829cb53`,
 updated on 2026-11-06 from the `86200dead453bb067e554e989110cbadca8d4756`
 snapshot of the user's local `applemusic-like-lyrics` checkout.
 The extension retains the existing English line-break rule (`#629` is omitted).
+It also keeps the pre-`#632` glow rule: an eligible timed syllable can
+trigger glow on the full word even when the merged text exceeds seven characters.
 
 Only the `src` directories and package metadata of core (0.6.0), react (0.6.0),
 and react-full (0.5.0) are included, together with the TTML package (1.0.1),
