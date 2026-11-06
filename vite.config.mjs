@@ -7,6 +7,7 @@ const local = (path) => fileURLToPath(new URL(path, import.meta.url));
 const core = local('./vendor/amll/packages/core/src/');
 
 export default defineConfig({
+  base: './',
   define: {
     // Library mode preserves process.env unless we explicitly compile browser dependencies for production.
     'process.env.NODE_ENV': JSON.stringify('production'),
@@ -21,6 +22,7 @@ export default defineConfig({
       copyFileSync(local('./node_modules/opencc-js/LICENSE'), local('./src/vendor/amll-player/OpenCC-LICENSE.txt'));
       copyFileSync(local('./node_modules/opencc-js/LICENSES/Apache-2.0.txt'), local('./src/vendor/amll-player/OpenCC-DATA-LICENSE.txt'));
       copyFileSync(local('./node_modules/opencc-js/THIRD_PARTY_LICENSES.md'), local('./src/vendor/amll-player/OpenCC-NOTICES.md'));
+      copyFileSync(local('./node_modules/hls.js/LICENSE'), local('./src/vendor/amll-player/HLS-LICENSE.txt'));
     } },
   ],
   resolve: {

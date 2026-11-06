@@ -5,6 +5,13 @@ article[data-testid="lyrics-fullscreen-modal"][data-lyplus-amll-active] > :not(#
     display: none !important;
     pointer-events: none !important;
 }
+/* Arm on the playback bar artwork gesture, before the native modal is inserted.
+   Keep its geometry available until the frame can take over. */
+html[data-lyplus-amll-opening-cover] article[data-testid="lyrics-fullscreen-modal"]:not([data-lyplus-amll-active]) > :not(#lyplus-amll-root) {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
 #lyplus-amll-root {
     position: fixed;
     inset: 0;
@@ -21,6 +28,21 @@ article[data-testid="lyrics-fullscreen-modal"][data-lyplus-amll-active] > :not(#
     contain: strict;
 }
 article[data-lyplus-amll-active] #lyplus-amll-root { opacity: 1; pointer-events: auto; }
+.lyplus-amll-cover-flight:popover-open {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    max-width: none;
+    max-height: none;
+    background: transparent;
+    object-fit: cover;
+    transform-origin: top left;
+    pointer-events: none;
+    user-select: none;
+}
+.lyplus-amll-cover-flight::backdrop { background: transparent; pointer-events: none; }
 #lyplus-amll-restore {
     position: fixed;
     top: 20px;

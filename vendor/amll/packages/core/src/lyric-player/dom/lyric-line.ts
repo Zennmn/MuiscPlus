@@ -278,7 +278,11 @@ export class LyricLineEl extends LyricLineBase {
 		);
 	}
 
-	private createWord(word: LyricWord, shouldEmphasize: boolean): RealWord {
+	private createWord(
+		word: LyricWord,
+		shouldEmphasize: boolean,
+		floatWord: LyricWord = word,
+	): RealWord {
 		const mainWordEl = document.createElement("span");
 		const subElements: HTMLSpanElement[] = [];
 		const romanWord = word.romanWord?.trim() ?? "";
@@ -352,13 +356,15 @@ export class LyricLineEl extends LyricLineBase {
 			...word,
 			mainElement: mainWordEl,
 			subElements: subElements,
-			elementAnimations: [
-				createFloatAnimation(mainWordEl, {
-					word: word,
-					lineStartTime: this.lyricLine.startTime,
-					isBG: this.lyricLine.isBG,
-				}),
-			],
+			elementAnimations: shouldEmphasize
+				? []
+				: [
+						createFloatAnimation(mainWordEl, {
+							word: floatWord,
+							lineStartTime: this.lyricLine.startTime,
+							isBG: this.lyricLine.isBG,
+						}),
+					],
 			width: 0,
 			height: 0,
 			padding: 0,
@@ -396,10 +402,9 @@ export class LyricLineEl extends LyricLineBase {
 			} as LyricWord,
 		);
 
-		let emp = chunk.some((word) => LyricLineBase.shouldEmphasize(word));
-		if (!isCJK(merged.word)) {
-			emp = emp || LyricLineBase.shouldEmphasize(merged);
-		}
+		const emp = isCJK(merged.word)
+			? chunk.some((word) => LyricLineBase.shouldEmphasize(word))
+			: LyricLineBase.shouldEmphasize(merged);
 
 		const wrapperWordEl = document.createElement("span");
 		wrapperWordEl.classList.add(styles.emphasizeWrapper);
@@ -412,7 +417,7 @@ export class LyricLineEl extends LyricLineBase {
 				continue;
 			}
 
-			const realWord = this.createWord(word, emp);
+			const realWord = this.createWord(word, emp, emp ? merged : word);
 
 			if (emp) {
 				characterElements.push(...realWord.subElements);

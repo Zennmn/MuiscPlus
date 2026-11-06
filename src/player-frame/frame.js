@@ -11,6 +11,8 @@
         } catch { return false; }
     })();
     if (!allowedParent) return;
+    const host = document.getElementById('player');
+    const openingCoverPending = 'data-cover-opening-pending';
     let player, disposed = false, sequence = 0;
     const pending = new Map();
     const send = message => { if (!disposed) parent.postMessage({ ...message, type: 'LYPLUS_FRAME', channel }, parentOrigin); };
@@ -35,7 +37,7 @@
         args[10] = () => context;
         player.displayLyrics(...args);
     }
-    const methods = new Set(['updateSong', 'displayLyrics', 'updateCurrentTick', 'updatePlayback', 'updateSettings', 'updateDisplayMode', 'setUserOffset', 'setAvailableProviders', 'setVisible', 'setTranslationLoading', 'showToast', 'displaySongNotFound', 'displaySongError', 'cleanupLyrics']);
+    const methods = new Set(['updateSong', 'displayLyrics', 'updateCurrentTick', 'updatePlayback', 'updateSettings', 'updateDisplayMode', 'setUserOffset', 'setAvailableProviders', 'setVisible', 'setTranslationLoading', 'showToast', 'displaySongNotFound', 'displaySongError', 'cleanupLyrics', 'cancelCoverOpening', 'setCoverVideoEnabled']);
     function dispose() {
         if (disposed) return;
         player?.dispose();
@@ -50,7 +52,9 @@
         if (disposed || event.source !== parent || event.origin !== parentOrigin || message?.type !== 'LYPLUS_FRAME' || message.channel !== channel) return;
         if (message.kind === 'init' && !player) {
             document.documentElement.lang = message.language || 'en';
-            player = globalThis.LyPlusAMLL.createPlayer(document.getElementById('player'), {
+            // A staged opening must start with no full-size cover in the iframe.
+            host.toggleAttribute(openingCoverPending, message.holdCoverOnOpen === true);
+            player = globalThis.LyPlusAMLL.createPlayer(host, {
                 renderDocument: 'extension-frame-v1',
                 settings: message.settings, translate: key => message.labels?.[key] || '',
                 sendCommand: (...args) => action('command', ...args),
@@ -74,8 +78,42 @@
         } else if (message.kind === 'call' && player && methods.has(message.method) && Array.isArray(message.args)) {
             try {
                 if (message.method === 'displayLyrics') displayLyrics(message.args);
-                else player[message.method](...message.args);
+                else if (message.method === 'cancelCoverOpening') {
+                    try { player.cancelCoverOpening(); }
+                    finally { host.removeAttribute(openingCoverPending); }
+                } else player[message.method](...message.args);
             } catch (error) { player.showToast(error?.message || 'Player update failed'); }
+        } else if (message.kind === 'cover-request' && player && Number.isSafeInteger(message.id)) {
+            const reply = result => send({ kind: 'cover-result', id: message.id, result });
+            let result = null;
+            try {
+                if (message.operation === 'measure') result = player.getCoverTransitionTarget?.() ?? null;
+                else if (message.operation === 'prepare-open') {
+                    result = host.hasAttribute(openingCoverPending) && player.prepareCoverOpening?.(message.origin) === true;
+                } else if (message.operation === 'paint-open') {
+                    requestAnimationFrame(() => {
+                        if (disposed) return;
+                        try {
+                            if (!host.hasAttribute(openingCoverPending) || !player.getPreparedCoverOpeningRect?.()) { reply(null); return; }
+                            host.removeAttribute(openingCoverPending);
+                            // Let the parked thumbnail paint under the page copy before handing it off.
+                            requestAnimationFrame(() => {
+                                if (disposed) return;
+                                try { reply(player.getPreparedCoverOpeningRect?.() ?? null); }
+                                catch (_) { reply(null); }
+                            });
+                        } catch (_) { reply(null); }
+                    });
+                    return;
+                } else if (message.operation === 'play-open') {
+                    Promise.resolve(player.playCoverOpening?.()).then(ok => reply(ok === true), () => reply(false));
+                    return;
+                } else if (['hide', 'show'].includes(message.operation) && player.setCoverTransitionHidden) {
+                    player.setCoverTransitionHidden(message.operation === 'hide');
+                    result = true;
+                }
+            } catch (_) { /* The parent can open or close normally without the transition. */ }
+            reply(result);
         } else if (message.kind === 'result') {
             const item = pending.get(message.id);
             if (!item) return;

@@ -30,6 +30,11 @@ License copies and data notices are included as OpenCC-LICENSE.txt,
 OpenCC-DATA-LICENSE.txt, and OpenCC-NOTICES.md in src/vendor/amll-player/.
 No lyrics are sent to an external conversion service.
 
+The Apple Music player loads the bundled hls.js light build for dynamic
+album covers. It is licensed under Apache-2.0; its copyright and license
+notice is included as src/vendor/amll-player/HLS-LICENSE.txt.
+Upstream: https://github.com/video-dev/hls.js
+
 ## Metadata-matched fallback lyrics
 
 The browser adapters and KRC/YRC/LRC parsing in

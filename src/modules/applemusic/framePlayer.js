@@ -1,7 +1,7 @@
 // Keep the original AMLL UI in its own document. Apple's document-wide observers
 // must not see every style/animation mutation made by the lyric renderer.
 (function () {
-    const visualKeys = ['lightweight', 'appleMusicAMLLBackground', 'appleMusicDisplayMode', 'appleMusicPlayerFont', 'appleMusicPlayerFontFile', 'largerTextMode', 'wordByWord', 'hidePhoneticDup', 'displayMode'];
+    const visualKeys = ['lightweight', 'appleMusicAMLLBackground', 'appleMusicAMLLBackgroundRenderer', 'appleMusicDisplayMode', 'appleMusicPlayerFont', 'appleMusicPlayerFontFile', 'largerTextMode', 'wordByWord', 'hidePhoneticDup', 'displayMode'];
     const visualSettings = settings => Object.fromEntries(visualKeys.filter(key => settings && key in settings).map(key => [key, settings[key]]));
     const songView = song => Object.fromEntries(['appleId', 'title', 'artist', 'album', 'duration', 'artwork'].filter(key => song && key in song).map(key => [key, song[key]]));
     const labelKeys = [
@@ -10,6 +10,7 @@
         'playerRomanizationLoading', 'playerRomanizationUnavailable', 'playerRomanizationError', 'playerLyricsSource',
         'playerAutomatic', 'playerSourcePreference', 'playerCurrentSource', 'playerSourceUnavailable', 'playerLyricsOffset',
         'playerAnimatedBackground', 'playerResetOffset', 'playerReloadLyrics', 'playerNativePlayer', 'playerConnecting',
+        'playerBackgroundRenderer', 'playerBackgroundMesh', 'playerBackgroundTitanium',
         'playerLoadingLyrics', 'playerSongNotFound', 'playerNotFoundError', 'playerPlaybackCommandFailed', 'playerSettingsSaveFailed',
         'playerFontLoadFailed', 'playerFullscreen', 'playerExitFullscreen', 'playerFullscreenChangeFailed', 'playerExportFailed',
         'playerDownloadNativeTTML', 'playerDownloadingNativeTTML', 'playerNativeTTMLUnavailable', 'playerNativeTTMLSongChanged',
@@ -32,12 +33,31 @@
         frameURL.searchParams.set('channel', channel);
         frameURL.searchParams.set('parentOrigin', window.location.origin);
         let disposed = false, ready = false, lastLyricsArgs;
+        let coverRequest = null, coverSequence = 0;
         const queue = [];
         const send = message => {
             if (!disposed) frame.contentWindow?.postMessage({ ...message, channel, type: 'LYPLUS_FRAME' }, frameOrigin);
         };
         const fail = () => { if (!disposed) options.onFallback?.(); };
         const timeout = setTimeout(fail, 12000);
+        function finishCoverRequest(result = null) {
+            const request = coverRequest;
+            if (!request) return;
+            coverRequest = null;
+            clearTimeout(request.timer);
+            request.resolve(result);
+        }
+        function requestCover(operation, origin) {
+            if (disposed || !ready) return Promise.resolve(null);
+            finishCoverRequest();
+            return new Promise(resolve => {
+                const id = ++coverSequence;
+                coverRequest = { id, resolve, timer: setTimeout(() => {
+                    if (coverRequest?.id === id) finishCoverRequest();
+                }, operation === 'play-open' ? 550 : operation === 'paint-open' ? 240 : 120) };
+                send({ kind: 'cover-request', id, operation, origin });
+            });
+        }
         function call(method, ...args) {
             if (disposed) return;
             if (ready) { send({ kind: 'call', method, args }); return; }
@@ -69,6 +89,10 @@
                 try { await options.sendCommand?.('snapshot'); } catch (_) { }
                 return;
             }
+            if (message.kind === 'cover-result') {
+                if (coverRequest?.id === message.id) finishCoverRequest(message.result ?? null);
+                return;
+            }
             if (message.kind !== 'action' || !Number.isSafeInteger(message.id) || !Array.isArray(message.args)) return;
             const args = message.args;
             const handlers = {
@@ -76,8 +100,9 @@
                 close: () => options.onClose?.(), fallback: () => options.onFallback?.(),
                 settings: () => {
                     const values = args[0];
-                    if (!values || Object.keys(values).some(key => !['appleMusicAMLLBackground', 'appleMusicDisplayMode'].includes(key))) throw new Error('Invalid player setting');
+                    if (!values || Object.keys(values).some(key => !['appleMusicAMLLBackground', 'appleMusicAMLLBackgroundRenderer', 'appleMusicDisplayMode'].includes(key))) throw new Error('Invalid player setting');
                     if ('appleMusicAMLLBackground' in values && typeof values.appleMusicAMLLBackground !== 'boolean') throw new Error('Invalid background setting');
+                    if ('appleMusicAMLLBackgroundRenderer' in values && !['mesh', 'titanium'].includes(values.appleMusicAMLLBackgroundRenderer)) throw new Error('Invalid background style');
                     if ('appleMusicDisplayMode' in values && !['none', 'translate', 'romanize', 'both'].includes(values.appleMusicDisplayMode)) throw new Error('Invalid display mode');
                     return options.onSettingsChange?.(values);
                 },
@@ -99,7 +124,8 @@
         function onLoad() {
             if (ready) { fail(); return; } // A reloaded child cannot reuse stale state.
             send({ kind: 'init', language: options.getLanguage?.() || options.language || pBrowser.i18n?.getUILanguage?.() || document.documentElement.lang || navigator.language,
-                labels: Object.fromEntries(labelKeys.map(key => [key, options.translate?.(key) || ''])), settings: visualSettings(options.settings) });
+                labels: Object.fromEntries(labelKeys.map(key => [key, options.translate?.(key) || ''])), settings: visualSettings(options.settings),
+                holdCoverOnOpen: options.holdCoverOnOpen?.() === true });
         }
         window.addEventListener('message', onMessage);
         frame.addEventListener('load', onLoad);
@@ -110,12 +136,20 @@
             updateSong: info => call('updateSong', songView(info)), displayLyrics,
             updateSettings: next => call('updateSettings', visualSettings(next)),
             updateDisplayMode: (lyrics, mode, settings) => call('updateDisplayMode', lyrics, mode, visualSettings(settings)),
+            getCoverTransitionTarget: () => requestCover('measure'),
+            setCoverTransitionHidden: hidden => requestCover(hidden ? 'hide' : 'show'),
+            prepareCoverOpening: origin => requestCover('prepare-open', origin),
+            awaitCoverOpeningPaint: () => requestCover('paint-open'),
+            playCoverOpening: () => requestCover('play-open'),
+            cancelCoverOpening: () => call('cancelCoverOpening'),
+            setCoverVideoEnabled: enabled => call('setCoverVideoEnabled', enabled),
             ...Object.fromEntries(['updateCurrentTick', 'updatePlayback', 'setUserOffset', 'setAvailableProviders', 'setVisible', 'setTranslationLoading', 'showToast', 'displaySongNotFound', 'displaySongError', 'cleanupLyrics'].map(method => [method, (...args) => call(method, ...args)])),
             dispose() {
                 if (disposed) return;
                 send({ kind: 'dispose' });
                 disposed = true;
                 clearTimeout(timeout);
+                finishCoverRequest();
                 queue.length = 0;
                 lastLyricsArgs = undefined;
                 window.removeEventListener('message', onMessage);

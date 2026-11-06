@@ -7,6 +7,7 @@ import {
 	type BaseRenderer,
 	IsolationRenderer,
 	type OptimizeLyricOptions,
+	TitaniumRenderer,
 } from "@applemusic-like-lyrics/core";
 import {
 	BackgroundRender,
@@ -18,6 +19,7 @@ import classNames from "classnames";
 import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { atom, useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import {
+	type ComponentPropsWithRef,
 	type FC,
 	type HTMLProps,
 	useCallback,
@@ -29,6 +31,7 @@ import {
 } from "react";
 import { AutoLyricLayout } from "../../layout/auto";
 import { toDuration } from "../../utils";
+import { useComposedRefs } from "../../utils/useComposedRefs";
 import { AudioFFTVisualizer } from "../AudioFFTVisualizer";
 import { AudioQualityTag } from "../AudioQualityTag";
 import { BouncingSlider } from "../BouncingSlider";
@@ -98,6 +101,7 @@ import {
 	showMusicNameAtom,
 	showRemainingTimeAtom,
 	showVolumeControlAtom,
+	titaniumRendererOptionsAtom,
 	VerticalCoverLayout,
 	verticalCoverLayoutAtom,
 } from "../../states/configAtoms";
@@ -131,7 +135,8 @@ const PrebuiltMusicInfo: FC<{
 	className?: string;
 	style?: React.CSSProperties;
 	favoriteButtonSlot?: React.ReactNode;
-}> = ({ className, style, favoriteButtonSlot }) => {
+	infoProps?: ComponentPropsWithRef<typeof MusicInfo>["infoProps"];
+}> = ({ className, style, infoProps, favoriteButtonSlot }) => {
 	const musicName = useAtomValue(musicNameAtom);
 	const musicArtists = useAtomValue(musicArtistsAtom);
 	const musicAlbum = useAtomValue(musicAlbumNameAtom);
@@ -156,6 +161,7 @@ const PrebuiltMusicInfo: FC<{
 		<MusicInfo
 			className={className}
 			style={combinedStyle}
+			infoProps={infoProps}
 			name={showMusicName ? musicName : undefined}
 			artists={showMusicArtists ? musicArtists.map((v) => v.name) : undefined}
 			album={showMusicAlbum ? musicAlbum : undefined}
@@ -534,6 +540,66 @@ const PrebuiltMusicControls: FC<
 export interface PrebuiltLyricPlayerProps extends HTMLProps<HTMLDivElement> {
 	bottomLineSlot?: React.ReactNode;
 	optimizeOptions?: OptimizeLyricOptions;
+	/**
+	 * 布局中封面容器的 ref，可作为共享元素过渡的锚点
+	 *
+	 * 该容器包含沉浸布局的遮罩，但不包含封面自身的暂停缩放。
+	 * 横竖布局切换时，ref 可能先解除绑定再指向新的节点，
+	 * 调用方应跟随 ref 更新，不应缓存旧节点或移除由 React 管理的节点。
+	 */
+	coverFrameRef?: React.Ref<HTMLDivElement>;
+	/**
+	 * 传给封面组件根节点的 DOM 属性、样式及 ref
+	 *
+	 * 封面地址、媒体类型和播放状态仍由对应的 atom 管理。
+	 * 可通过 `videoRef` 获取封面视频元素以协调画面交接，切换为图片封面时会被清空；
+	 * 设置 `coverVideoPaused` 会禁止视频自动播放。
+	 * 与 {@link PrebuiltLyricPlayerProps.coverFrameRef} 一样，布局切换时 ref 可能指向新的节点。
+	 */
+	coverProps?: Omit<
+		ComponentPropsWithRef<typeof Cover>,
+		"coverUrl" | "coverIsVideo" | "musicPaused"
+	>;
+	/**
+	 * 传给收起控件的属性
+	 *
+	 * `ref` 指向控件容器，`buttonRef` 指向实际的按钮，`buttonLabel` 为按钮提供无障碍名称。
+	 * 显式传入的 `onClick` 优先于 {@link onClickControlThumbAtom} 中的回调。
+	 * ref 支持对象形式、回调形式以及 React 19 的清理函数。
+	 */
+	controlThumbProps?: ComponentPropsWithRef<typeof ControlThumb>;
+	/**
+	 * 传给歌曲信息文字容器的属性及 ref，不包含菜单按钮
+	 *
+	 * 只会应用到当前布局中正在显示的歌曲信息上。
+	 */
+	musicInfoProps?: ComponentPropsWithRef<typeof MusicInfo>["infoProps"];
+	/**
+	 * 宿主应用中播放列表面板的打开状态，会反映到播放列表按钮的 `aria-expanded` 上
+	 *
+	 * @default false
+	 */
+	playlistOpened?: boolean;
+	/**
+	 * 点击播放列表按钮时触发，参数为请求切换到的打开状态
+	 *
+	 * 本组件不会创建播放列表面板，也不会修改宿主的播放队列。
+	 *
+	 * @example
+	 * ```tsx
+	 * <PrebuiltLyricPlayer
+	 *   playlistOpened={queueOpen}
+	 *   onPlaylistOpenedChange={setQueueOpen}
+	 *   playlistControls="play-queue"
+	 *   playlistButtonLabel="播放队列"
+	 * />
+	 * ```
+	 */
+	onPlaylistOpenedChange?: (opened: boolean) => void;
+	/** 播放列表面板的元素 ID，会作为播放列表按钮的 `aria-controls` */
+	playlistControls?: string;
+	/** 横竖布局中播放列表按钮共用的无障碍名称 */
+	playlistButtonLabel?: string;
 	onPlaylistClick?: () => void;
 	onAirPlayClick?: () => void;
 	fullscreenButtonSlot?: React.ReactNode;
@@ -542,6 +608,14 @@ export interface PrebuiltLyricPlayerProps extends HTMLProps<HTMLDivElement> {
 	lyricTimeOffsetMs?: number;
 }
 
+/** 把低频订阅收进背景子树，避免鼓点更新带动整个播放器重渲染。 */
+const LowFreqBackgroundRender: FC<
+	Omit<ComponentPropsWithRef<typeof BackgroundRender>, "lowFreqVolume">
+> = (props) => {
+	const lowFreqVolume = useAtomValue(lowFreqVolumeAtom);
+	return <BackgroundRender {...props} lowFreqVolume={lowFreqVolume} />;
+};
+
 /**
  * 已经部署好所有组件的歌词播放器组件，在正确设置所有的 Jotai 状态后可以开箱即用
  */
@@ -549,6 +623,14 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 	className,
 	bottomLineSlot,
 	optimizeOptions,
+	coverFrameRef,
+	coverProps,
+	controlThumbProps,
+	musicInfoProps,
+	playlistOpened,
+	onPlaylistOpenedChange,
+	playlistControls,
+	playlistButtonLabel,
 	lyricTimeOffsetMs,
 	onPlaylistClick,
 	onAirPlayClick,
@@ -560,7 +642,6 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 	const musicCover = useAtomValue(musicCoverAtom);
 	const musicCoverIsVideo = useAtomValue(musicCoverIsVideoAtom);
 	const musicIsPlaying = useAtomValue(musicPlayingAtom);
-	const lowFreqVolume = useAtomValue(lowFreqVolumeAtom);
 	const isLyricPageOpened = useAtomValue(isLyricPageOpenedAtom);
 	const lyricBackgroundFPS = useAtomValue(lyricBackgroundFPSAtom);
 	const verticalCoverLayout = useAtomValue(verticalCoverLayoutAtom);
@@ -575,6 +656,7 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 		"top",
 	);
 	const coverElRef = useRef<HTMLDivElement>(null);
+	const composedCoverRef = useComposedRefs(coverElRef, coverProps?.ref);
 	const [layoutEl, setLayoutEl] = useState<HTMLDivElement | null>(null);
 	const backgroundRenderer = useAtomValue(lyricBackgroundRendererAtom);
 	// 配置里存的可能是字符串标识，也可能是调用方直接塞进来的渲染器类。字符串一律
@@ -590,13 +672,17 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 		);
 	}, [backgroundRenderer.renderer]);
 	const isolationRendererOptions = useAtomValue(isolationRendererOptionsAtom);
+	const titaniumRendererOptions = useAtomValue(titaniumRendererOptionsAtom);
 	const configureBackgroundRenderer = useCallback(
 		(renderer: BaseRenderer) => {
 			if (renderer instanceof IsolationRenderer) {
 				renderer.setOptions(isolationRendererOptions);
 			}
+			if (renderer instanceof TitaniumRenderer) {
+				renderer.setOptions(titaniumRendererOptions);
+			}
 		},
-		[isolationRendererOptions],
+		[isolationRendererOptions, titaniumRendererOptions],
 	);
 	const showBottomControl = useAtomValue(showBottomControlAtom);
 
@@ -637,11 +723,24 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 				styles.smallMusicInfo,
 				hideLyricView && styles.hideLyric,
 			)}
+			infoProps={isVertical && !hideLyricView ? musicInfoProps : undefined}
 			favoriteButtonSlot={favoriteButtonSlot}
 		/>
 	);
 	const showSmallFullscreen =
 		showBottomControl && !hideLyricView && !!fullscreenButtonSlot;
+
+	const playlistButtonProps = {
+		checked: playlistOpened ?? false,
+		// The existing click-only handler does not provide an expanded state.
+		"aria-expanded":
+			playlistOpened ?? (onPlaylistClick && !onPlaylistOpenedChange ? undefined : false),
+		"aria-controls": playlistControls,
+		"aria-label": playlistButtonLabel,
+		onClick: onPlaylistOpenedChange
+			? () => onPlaylistOpenedChange(!playlistOpened)
+			: onPlaylistClick,
+	};
 
 	return (
 		<LayoutGroup>
@@ -650,17 +749,21 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 				className={classNames(styles.autoLyricLayout, className)}
 				onLayoutChange={setIsVertical}
 				verticalImmerseCover={verticalImmerseCover}
+				coverFrameRef={coverFrameRef}
 				coverSlot={
 					<Cover
+						{...coverProps}
 						coverUrl={musicCover}
 						coverIsVideo={musicCoverIsVideo}
-						ref={coverElRef}
+						ref={composedCoverRef}
 						musicPaused={
 							!musicIsPlaying && !musicCoverIsVideo && verticalImmerseCover
 						}
 					/>
 				}
-				thumbSlot={<ControlThumb onClick={onClickControlThumb} />}
+				thumbSlot={
+					<ControlThumb onClick={onClickControlThumb} {...controlThumbProps} />
+				}
 				smallControlsSlot={
 					showSmallFullscreen ? (
 						<div className={styles.smallControlsRow}>
@@ -687,10 +790,9 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 							}}
 						/>
 					) : (
-						<BackgroundRender
+						<LowFreqBackgroundRender
 							album={musicCover}
 							albumIsVideo={musicCoverIsVideo}
-							lowFreqVolume={lowFreqVolume}
 							renderScale={lyricBackgroundRenderScale}
 							fps={lyricBackgroundFPS}
 							renderer={resolvedBackgroundRenderer}
@@ -705,6 +807,9 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 				bigControlsSlot={
 					<>
 						<PrebuiltMusicInfo
+							infoProps={
+								isVertical && hideLyricView ? musicInfoProps : undefined
+							}
 							className={classNames(
 								styles.bigMusicInfo,
 								hideLyricView && styles.hideLyric,
@@ -732,7 +837,7 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 								/>
 								<PrebuiltToggleIconButton
 									type={PrebuiltToggleIconButtonType.Playlist}
-									onClick={onPlaylistClick}
+									{...playlistButtonProps}
 								/>
 							</div>
 						)}
@@ -743,6 +848,7 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 					<>
 						<PrebuiltMusicInfo
 							className={styles.horizontalControls}
+							infoProps={!isVertical ? musicInfoProps : undefined}
 							favoriteButtonSlot={favoriteButtonSlot}
 						/>
 						<PrebuiltProgressBar />
@@ -759,7 +865,7 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 							{fullscreenButtonSlot}
 							<PrebuiltToggleIconButton
 								type={PrebuiltToggleIconButtonType.Playlist}
-								onClick={onPlaylistClick}
+								{...playlistButtonProps}
 							/>
 							<PrebuiltToggleIconButton
 								type={PrebuiltToggleIconButtonType.Lyrics}

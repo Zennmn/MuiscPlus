@@ -40,3 +40,17 @@
 	background-color: black;
 	transition: background-image 0.5s linear;
 }
+
+.imageCoverInner {
+	position: relative;
+	overflow: hidden;
+	background-color: transparent;
+}
+
+.coverImage {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+}

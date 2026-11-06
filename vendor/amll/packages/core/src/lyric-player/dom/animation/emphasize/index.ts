@@ -175,13 +175,15 @@ function generateFloatKeyframes(isBG: boolean): Keyframe[] {
 	return new Array(ANIMATION_FRAME_QUANTITY).fill(0).map((_, j) => {
 		const x = (j + 1) / ANIMATION_FRAME_QUANTITY;
 		let y = Math.sin(x * Math.PI);
+		let up = 0.05;
 		if (isBG) {
 			y *= 2;
+			up *= 2;
 		}
 
 		return {
 			offset: x,
-			transform: `translateY(${-y * 0.05}em)`,
+			transform: `translateY(${-(y * 0.05 + x * up)}em)`,
 		};
 	});
 }
@@ -226,8 +228,8 @@ function createCharFloatAnimation(
 
 	const float = el.animate(frames, {
 		duration: params.animateDu * 1.4,
-		// 上浮动画比辉光动画提前 400ms 开始
-		delay: Number.isFinite(wordDelay) ? wordDelay - 400 : 0,
+		// 上浮动画
+		delay: Number.isFinite(wordDelay) ? wordDelay : 0,
 		id: "emphasize-word-float",
 		iterations: 1,
 		composite: "add",

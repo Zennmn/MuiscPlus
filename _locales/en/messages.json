@@ -1144,6 +1144,15 @@
   "playerAnimatedBackground": {
     "message": "Animated background"
   },
+  "playerBackgroundRenderer": {
+    "message": "Background style"
+  },
+  "playerBackgroundMesh": {
+    "message": "Mesh"
+  },
+  "playerBackgroundTitanium": {
+    "message": "Titanium"
+  },
   "playerResetOffset": {
     "message": "Reset offset"
   },

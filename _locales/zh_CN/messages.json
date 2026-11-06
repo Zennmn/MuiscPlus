@@ -1142,6 +1142,15 @@
   "playerAnimatedBackground": {
     "message": "动态背景"
   },
+  "playerBackgroundRenderer": {
+    "message": "背景样式"
+  },
+  "playerBackgroundMesh": {
+    "message": "流体"
+  },
+  "playerBackgroundTitanium": {
+    "message": "钛金属流沙"
+  },
   "playerResetOffset": {
     "message": "重置偏移"
   },

@@ -2,8 +2,10 @@
 
 Source: https://github.com/amll-dev/applemusic-like-lyrics
 
-Local snapshot commit: `86200dead453bb067e554e989110cbadca8d4756`.
-Copied from the user's local `applemusic-like-lyrics` checkout on 2026-10-14.
+Local runtime snapshot: `f32285864056587c4afa59d310208b0aa829cb53`,
+updated on 2026-11-06 from the `86200dead453bb067e554e989110cbadca8d4756`
+snapshot of the user's local `applemusic-like-lyrics` checkout.
+The extension retains the existing English line-break rule (`#629` is omitted).
 
 Only the `src` directories and package metadata of core (0.6.0), react (0.6.0),
 and react-full (0.5.0) are included, together with the TTML package (1.0.1),
@@ -25,6 +27,11 @@ controls and both vertical control states accept a fullscreen-button slot using
 the original ToggleIconButton styling and spacing. The extension toggles
 browser window fullscreen through the background windows API and restores its
 previous state.
+The upstream cover, media info, collapse control and controlled playlist APIs
+are available alongside the extension's existing callbacks and slots. The new
+cover frame ref leaves the extension's current lyric alignment unchanged.
+Titanium and its options are available to library consumers; the extension's
+background selection and default renderer remain unchanged.
 The horizontal layout's
 controls below the cover occupy 25% of the player container height, including
 their top spacing. The square cover is enlarged to 60% of the container height

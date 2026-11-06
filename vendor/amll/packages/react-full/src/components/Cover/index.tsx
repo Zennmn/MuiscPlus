@@ -9,6 +9,8 @@ import {
 	type ForwardRefExoticComponent,
 	forwardRef,
 	type HTMLProps,
+	type ReactNode,
+	type Ref,
 	type RefAttributes,
 	useEffect,
 	useLayoutEffect,
@@ -16,14 +18,19 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useComposedRefs } from "../../utils/useComposedRefs";
 import styles from "./index.module.css";
 
 export type CoverProps = {
 	coverUrl?: string;
 	coverIsVideo?: boolean;
 	coverVideoPaused?: boolean;
+	/** 封面视频元素的 ref，仅在 `coverIsVideo` 为 true 时指向视频元素，切换为图片封面时会被清空 */
+	videoRef?: Ref<HTMLVideoElement>;
 	musicPaused?: boolean;
 	pauseShrinkAspect?: number;
+	/** Optional layer painted above the static image; the image remains mounted below it. */
+	videoOverlay?: ReactNode;
 } & HTMLProps<HTMLDivElement>;
 
 /**
@@ -37,27 +44,34 @@ export const Cover: ForwardRefExoticComponent<
 			coverUrl,
 			coverIsVideo,
 			coverVideoPaused,
+			videoRef: externalVideoRef,
 			className,
 			musicPaused,
 			pauseShrinkAspect,
+			videoOverlay,
+			style,
 			...rest
 		},
 		ref,
 	) => {
 		const frameRef = useRef<HTMLDivElement>(null);
+		const composedRef = useComposedRefs(frameRef, ref);
 		const clsNames = useMemo(
 			() =>
 				classNames(styles.cover, musicPaused && styles.musicPaused, className),
 			[className, musicPaused],
 		);
 		const videoRef = useRef<HTMLVideoElement>(null);
+		const composedVideoRef = useComposedRefs(videoRef, externalVideoRef);
 		useEffect(() => {
 			const videoEl = videoRef.current;
 			if (videoEl) {
 				if (coverVideoPaused) {
 					videoEl.pause();
 				} else {
-					videoEl.play();
+					void videoEl.play().catch(() => {
+						// 暂停、替换视频源或自动播放策略都可能中断播放请求，忽略即可
+					});
 				}
 			}
 		}, [coverVideoPaused]);
@@ -82,6 +96,7 @@ export const Cover: ForwardRefExoticComponent<
 
 		const isRemoteUrl =
 			coverUrl?.startsWith("http://") || coverUrl?.startsWith("https://");
+		const isImageCover = !coverIsVideo && !!coverUrl;
 
 		return (
 			<div
@@ -89,40 +104,41 @@ export const Cover: ForwardRefExoticComponent<
 				style={
 					{
 						"--scale-level": pauseShrinkAspect ?? 0.75,
+						...style,
 					} as React.CSSProperties
 				}
-				ref={(node) => {
-					frameRef.current = node;
-					if (typeof ref === "function") {
-						ref(node);
-					} else if (ref) {
-						ref.current = node;
-					}
-				}}
+				ref={composedRef}
 				{...rest}
 			>
 				<Squircle
 					cornerRadius={cornerRadius}
 					cornerSmoothing={0.7}
-					className={styles.coverInner}
+					className={classNames(
+						styles.coverInner,
+						isImageCover && styles.imageCoverInner,
+					)}
 				>
 					{coverIsVideo ? (
 						<video
 							className={styles.coverInner}
 							src={coverUrl}
-							autoPlay
+							autoPlay={!coverVideoPaused}
 							loop
 							muted
 							playsInline
 							crossOrigin={isRemoteUrl ? "anonymous" : undefined}
-							ref={videoRef}
+							ref={composedVideoRef}
 						/>
+					) : isImageCover ? (
+						<>
+							<img className={styles.coverImage} src={coverUrl} alt="" />
+							{videoOverlay}
+						</>
 					) : (
 						<div
 							className={styles.coverInner}
 							style={
 								{
-									backgroundImage: `url(${coverUrl})`,
 									"--scale-level": pauseShrinkAspect ?? 0.75,
 								} as React.CSSProperties
 							}

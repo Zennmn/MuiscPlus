@@ -14,6 +14,7 @@
   let accountStorefront;
   let pendingStorefront;
   let pendingMetadata;
+  let pendingCoverVideo;
   const subscriptions = [];
   let lyricsLanguage = document.currentScript?.dataset?.lyricsLanguage;
   let queueRevision = 0;
@@ -370,6 +371,81 @@
   const METADATA_TTL = 6 * 60 * 60 * 1000;
   const METADATA_MISS_TTL = 30 * 60 * 1000;
 
+  const coverVideoCache = new Map();
+  const COVER_VIDEO_TTL = 6 * 60 * 60 * 1000;
+  const COVER_VIDEO_MISS_TTL = 10 * 60 * 1000;
+  const coverVideoKey = (storefront, id) => storefront + ':' + id;
+  const albumVideoKey = (storefront, id) => storefront + ':album:' + id;
+  const coverVideoUrl = value => {
+    if (typeof value !== 'string' || value.length > 2048) return null;
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'https:' || url.hostname !== 'mvod.itunes.apple.com' || url.port || url.username || url.password) return null;
+      return url.pathname.toLowerCase().endsWith('.m3u8') ? url.href : null;
+    } catch (_) { return null; }
+  };
+
+  function rememberCoverVideo(key, value) {
+    coverVideoCache.set(key, { value, expires: Date.now() + (value ? COVER_VIDEO_TTL : COVER_VIDEO_MISS_TTL) });
+    if (coverVideoCache.size > 24) coverVideoCache.delete(coverVideoCache.keys().next().value);
+  }
+
+  function parseCoverPage(text) {
+    try { return text ? JSON.parse(text) : null; }
+    catch (_) { return null; }
+  }
+
+  async function coverPageHeader(storefront, kind, id, signal, currentPage) {
+    if (signal.aborted) return null;
+    const headerFrom = data => {
+      try {
+        const page = data?.data?.find(page => {
+          const item = page?.intent?.contentDescriptor;
+          return item?.kind === kind && String(item.identifiers?.storeAdamID) === id
+            && validStorefront(item.locale?.storefront) === storefront;
+        });
+        return page?.data?.sections?.flatMap(section => section?.items || []).find(item => {
+          if (kind === 'album' && item?.id === `album-detail-header - ${id}`) return true;
+          const descriptor = item?.contentDescriptor;
+          return descriptor?.kind === kind && String(descriptor.identifiers?.storeAdamID) === id;
+        }) || null;
+      } catch (_) { return null; }
+    };
+    // Apple includes the motion artwork in its public album page. The initial
+    // document data may belong to a previous SPA route, so match the resource ID.
+    const current = headerFrom(currentPage);
+    if (current) return current;
+    const response = await fetch(`/${storefront}/${kind}/${id}`, {
+      credentials: 'omit', headers: { Accept: 'text/html' }, signal,
+    });
+    if (!response.ok) return null;
+    const state = (await response.text()).match(/<script\b[^>]*\sid=["']serialized-server-data["'][^>]*>([\s\S]*?)<\/script>/i);
+    return headerFrom(parseCoverPage(state?.[1]));
+  }
+
+  async function requestCoverVideo(id, signal) {
+    const storefront = validStorefront(location.pathname.split('/')[1]) || validStorefront(music.storefrontId) || 'us';
+    const cached = coverVideoCache.get(coverVideoKey(storefront, id));
+    if (cached && cached.expires > Date.now()) return cached.value;
+    if (signal.aborted) return null;
+    const currentPage = parseCoverPage(document.getElementById('serialized-server-data')?.textContent);
+    const song = await coverPageHeader(storefront, 'song', id, signal, currentPage);
+    if (!song) return null;
+    const albumId = String(song.contentDescriptor?.albumID || '');
+    if (!/^\d+$/.test(albumId)) { rememberCoverVideo(coverVideoKey(storefront, id), null); return null; }
+    const albumCached = coverVideoCache.get(albumVideoKey(storefront, albumId));
+    if (albumCached && albumCached.expires > Date.now()) {
+      rememberCoverVideo(coverVideoKey(storefront, id), albumCached.value);
+      return albumCached.value;
+    }
+    const album = await coverPageHeader(storefront, 'album', albumId, signal, currentPage);
+    if (!album) return null;
+    const value = coverVideoUrl(album.videoArtwork?.dictionary?.motionDetailSquare?.video);
+    rememberCoverVideo(albumVideoKey(storefront, albumId), value);
+    rememberCoverVideo(coverVideoKey(storefront, id), value);
+    return value;
+  }
+
   const hasCjkText = value => /[\u3041-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uff66-\uff9d]/.test(value || '');
   const hasHangulText = value => /[\uac00-\ud7af]/.test(value || '');
   const JAPANESE_METADATA = /j-pop|j-rock|japanese|anime|日本流行|日语流行|日語流行|动画|動畫/;
@@ -486,7 +562,7 @@
     const changed = key !== songKey;
     songKey = key;
     if (!changed && songInfo) { emit('LYPLUS_SONG_SNAPSHOT', { songInfo }); return; }
-    if (changed) { resetFavoriteState(); resetTimeline(); }
+    if (changed) { pendingCoverVideo?.abort(); resetFavoriteState(); resetTimeline(); }
     const request = ++lyricRequest;
     pendingLyrics?.abort();
     const attrs = item?.attributes;
@@ -514,6 +590,23 @@
   }
 
   async function execute(command, value) {
+    if (command === 'coverVideo') {
+      if (!music) return null;
+      syncSong();
+      const id = typeof value === 'string' ? value : '';
+      if (!/^\d+$/.test(id) || songInfo?.isVideo || songInfo?.appleId !== id) return null;
+      pendingCoverVideo?.abort();
+      const controller = new AbortController();
+      pendingCoverVideo = controller;
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        const result = await requestCoverVideo(id, controller.signal);
+        syncSong();
+        if (controller.signal.aborted || songInfo?.isVideo || songInfo?.appleId !== id) return null;
+        return result;
+      } catch (_) { return null; }
+      finally { clearTimeout(timeout); if (pendingCoverVideo === controller) pendingCoverVideo = null; }
+    }
     if (!music && command !== 'lyricsLanguage') throw new Error('Apple Music is not ready yet');
     if (command === 'snapshot') {
       syncSong(true);
@@ -736,6 +829,7 @@
     pendingLyrics?.abort();
     pendingStorefront?.abort();
     pendingMetadata?.abort();
+    pendingCoverVideo?.abort();
     favoriteRead?.controller?.abort();
     for (const [name, listener] of timelineListeners) timelineElement?.removeEventListener(name, listener);
     timelineListeners = [];

@@ -28,6 +28,7 @@ const LLM_THINKING_FORMATS = new Set(['auto', 'deepseek', 'openrouter', 'none'])
 const LLM_THINKING_EFFORTS = new Set(['low', 'high', 'max']);
 
 const ENUM_SETTINGS = {
+    appleMusicAMLLBackgroundRenderer: new Set(['mesh', 'titanium']),
     appleMusicDisplayMode: new Set(['none', 'translate', 'romanize', 'both']),
     appleMusicTitleCorrection: new Set(['off', 'original', 'cn', 'jp']),
     largerTextMode: new Set(['lyrics', 'romanization']),
