@@ -3,9 +3,13 @@
 .lyplus-amll-layout { position: absolute; inset: 0; width: 100%; height: 100%; }
 .lyplus-amll-player[data-custom-font] { font-family: var(--lyplus-player-font), -apple-system, BlinkMacSystemFont, sans-serif; }
 .lyplus-amll-player[data-custom-font] :where(div, span, p, small, strong, label, button, input, select, option, li, summary) { font-family: var(--lyplus-player-font), -apple-system, BlinkMacSystemFont, sans-serif; }
-[data-cover-transition-hidden="true"] .lyplus-amll-cover { opacity: 0 !important; pointer-events: none; }
-[data-lyplus-cover-opening-layer] { z-index: 3; isolation: isolate; }
-[data-lyplus-cover-opening] { will-change: transform; }
+.lyplus-presentation, .lyplus-presentation-full { position: absolute; inset: 0; }
+.lyplus-presentation { isolation: isolate; overflow: clip; }
+.lyplus-presentation-full { z-index: 1; opacity: 0; visibility: hidden; background: #202022; }
+.lyplus-presentation:is([data-presentation="expanded"], [data-presentation="preparing"]) > .lyplus-presentation-full {
+  visibility: visible;
+  opacity: 1;
+}
 .lyplus-amll-cover-video-layer { position: absolute; inset: 0; z-index: 1; overflow: hidden; opacity: 0; pointer-events: none; background: transparent; }
 .lyplus-amll-cover-video-layer[data-ready="true"] { opacity: 1; transition: opacity 140ms ease-out; }
 .lyplus-amll-cover-video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; background: transparent; }

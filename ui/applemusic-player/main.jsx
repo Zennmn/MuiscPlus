@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { atom, createStore, Provider, useAtomValue } from 'jotai';
 import { PrebuiltLyricPlayer } from '../../vendor/amll/packages/react-full/src/components/PrebuiltLyricPlayer';
@@ -349,6 +350,7 @@ export function createPlayer(host, options = {}) {
     translating: false, connected: false, queueOpen: false, queueLoading: false, queueError: false,
     queue: { position: 0, items: [], canSelect: false }, queuePlayingIndex: null, displayFeedback: {},
     isFavorited: null, canFavorite: false, favoriteBusy: false,
+    presentation: 'compact', targetExpanded: false, fullMounted: false,
   });
   let root = null;
   let destroyed = false;
@@ -372,205 +374,109 @@ export function createPlayer(host, options = {}) {
   let lastQueueRevision;
   let panelTrigger = null;
   let favoriteRequest = 0;
-  const coverFrameRef = { current: null };
   const coverRef = { current: null };
   const collapseButtonRef = { current: null };
-  let coverImageProbe = null;
-  let coverOpening = null;
   const coverVideoControllerRef = { current: null };
   const revokeCoverVideo = () => {
     coverVideoControllerRef.current?.disable();
     if (!destroyed) patchView({ coverVideoEnabled: false });
   };
   const PLAYER_QUEUE_PANEL_ID = 'lyplus-amll-queue-panel';
-  const COVER_HIDDEN_ATTRIBUTE = 'data-cover-transition-hidden';
-  const COVER_OPENING_ATTRIBUTE = 'data-lyplus-cover-opening';
-  const COVER_OPENING_LAYER_ATTRIBUTE = 'data-lyplus-cover-opening-layer';
-  const COVER_OPENING_EASING = 'cubic-bezier(.22,.8,.2,1)';
+  let openingArtwork = null;
+  let visible = !document.hidden;
+  let settledExpanded = false;
+  let preparedPresentation = null;
+  let presentationFrame = 0;
+  let latestPresentationRevision = -1;
+  let measuredViewport = '';
+  const presentationViewport = () => innerWidth + 'x' + innerHeight;
 
-  function setCoverTransitionHidden(hidden) {
-    const next = hidden === true;
-    if (next) host.setAttribute(COVER_HIDDEN_ATTRIBUTE, 'true');
-    else host.removeAttribute(COVER_HIDDEN_ATTRIBUTE);
+  function clearPresentationPreparation() {
+    cancelAnimationFrame(presentationFrame);
+    presentationFrame = 0;
+    preparedPresentation = null;
   }
 
-  function ensureCoverImage(image, songId, artwork) {
-    const src = image.getAttribute('src');
-    if (!src || src.trim() !== artwork) return false;
-    if (coverImageProbe?.songId !== songId || coverImageProbe.image !== image || coverImageProbe.src !== src) {
-      const probe = { songId, image, src, decoded: false, failed: false };
-      coverImageProbe = probe;
-      try {
-        image.decode().then(() => {
-          if (coverImageProbe === probe) probe.decoded = true;
-        }, () => {
-          if (coverImageProbe === probe) probe.failed = true;
-        });
-      } catch (_) {
-        probe.failed = true;
-      }
+  function readCoverRect() {
+    const cover = coverRef.current;
+    if (!cover?.isConnected) return null;
+    const { left, top, width, height } = cover.getBoundingClientRect();
+    const style = getComputedStyle(cover);
+    if (width <= 0 || height <= 0 || style.visibility !== 'visible') return null;
+    return { left, top, width, height };
+  }
+
+  function preparePresentation(expanded, revision) {
+    if (destroyed || typeof expanded !== 'boolean' || !Number.isSafeInteger(revision) || revision < 0) return false;
+    if (revision <= latestPresentationRevision) return false;
+    latestPresentationRevision = revision;
+    clearPresentationPreparation();
+    const viewport = presentationViewport();
+    preparedPresentation = { revision, expanded, viewport };
+    if (!expanded) {
+      diagnostics.finish('collapsed');
+      closePanels(false);
+      coverVideoControllerRef.current?.disable();
     }
-    const probe = coverImageProbe;
-    return probe.image === image && probe.songId === songId && probe.src === src
-      && probe.decoded === true && probe.failed !== true
-      && image.complete && image.naturalWidth > 0 && image.naturalHeight > 0;
-  }
-
-  function getCoverTransitionTarget() {
-    const songId = song?.appleId == null ? '' : String(song.appleId);
-    const artwork = typeof song?.artwork === 'string' ? song.artwork.trim() : '';
-    const frame = coverFrameRef.current, cover = coverRef.current;
-    if (!songId || !artwork || !frame || !cover || !frame.isConnected || !cover.isConnected || !frame.contains(cover)) return null;
-    const image = cover.querySelector('img');
-    if (cover.getAttribute('data-lyplus-cover-song-id') !== songId || !image || !cover.contains(image)
-      || !ensureCoverImage(image, songId, artwork)) return null;
-    const frameRect = frame.getBoundingClientRect(), rect = cover.getBoundingClientRect();
-    const viewportWidth = Number(innerWidth), viewportHeight = Number(innerHeight);
-    const values = [frameRect.width, frameRect.height, rect.left, rect.top, rect.width, rect.height, viewportWidth, viewportHeight];
-    if (!values.every(Number.isFinite) || rect.width <= 0 || rect.height <= 0 || viewportWidth <= 0 || viewportHeight <= 0) return null;
-    const radius = Math.max(0, Math.min(Math.min(rect.width, rect.height) / 2, Math.max(Math.min(rect.width, rect.height) * 0.02, viewportHeight * 0.007)));
-    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, radius, viewportWidth, viewportHeight, songId };
-  }
-
-  function releaseCoverOpening(opening) {
-    if (!opening) return;
-    try { opening.animation?.cancel(); } catch (_) { /* Always clear the visual markers below. */ }
-    try {
-      const style = opening.originalStyle;
-      if (opening.surface && style) {
-        const restore = (property, value, priority) => {
-          if (value) opening.surface.style.setProperty(property, value, priority);
-          else opening.surface.style.removeProperty(property);
-        };
-        restore('transform', style.transform, style.transformPriority);
-        restore('transform-origin', style.transformOrigin, style.transformOriginPriority);
-      }
-    } catch (_) { /* Detached or already released. */ }
-    try { opening.surface?.removeAttribute(COVER_OPENING_ATTRIBUTE); } catch (_) { /* Detached or already released. */ }
-    try { opening.frame?.removeAttribute(COVER_OPENING_LAYER_ATTRIBUTE); } catch (_) { /* Detached or already released. */ }
-  }
-
-  function cancelCoverOpening() {
-    const opening = coverOpening;
-    coverOpening = null;
-    releaseCoverOpening(opening);
-  }
-
-  function prepareCoverOpening(origin) {
-    cancelCoverOpening();
-    const target = getCoverTransitionTarget();
-    const cover = coverRef.current, frame = coverFrameRef.current;
-    const surface = cover?.querySelector('img')?.parentElement;
-    const values = [origin?.left, origin?.top, origin?.width, origin?.height];
-    if (!target || !frame?.isConnected || !cover?.isConnected || !surface?.isConnected
-      || surface.parentElement !== cover
-      || !values.every(Number.isFinite) || origin.width <= 0 || origin.height <= 0
-      || origin.songId !== target.songId) return false;
-    if (openingSurfaceHasTransform(surface)) return false;
-    const frameStyle = getComputedStyle(frame);
-    const hiddenLyrics = store.get(config.hideLyricViewAtom);
-    const verticalLayout = store.get(config.verticalCoverLayoutAtom);
-    if ((hiddenLyrics && verticalLayout === config.VerticalCoverLayout.ForceImmersive)
-      || frame.matches('[class*="immerseCover"]')
-      || (frameStyle.maskImage && frameStyle.maskImage !== 'none')
-      || (frameStyle.webkitMaskImage && frameStyle.webkitMaskImage !== 'none')
-      || matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-    const surfaceRect = surface.getBoundingClientRect();
-    const scaleX = origin.width / surfaceRect.width, scaleY = origin.height / surfaceRect.height;
-    if (![surfaceRect.width, surfaceRect.height, scaleX, scaleY].every(Number.isFinite)
-      || surfaceRect.width <= 0 || surfaceRect.height <= 0
-      || scaleX <= 0 || scaleY <= 0) return false;
-    const originCenterX = origin.left + origin.width / 2, originCenterY = origin.top + origin.height / 2;
-    const centerX = surfaceRect.left + surfaceRect.width / 2, centerY = surfaceRect.top + surfaceRect.height / 2;
-    const localX = (originCenterX - centerX) / surfaceRect.width;
-    const localY = (originCenterY - centerY) / surfaceRect.height;
-    const transform = `translate(${localX * 100}%, ${localY * 100}%) scale(${scaleX}, ${scaleY})`;
-    const opening = {
-      animation: null, surface, frame, songId: target.songId, state: 'preparing',
-      origin,
-      originalStyle: {
-        transform: surface.style.getPropertyValue('transform'),
-        transformPriority: surface.style.getPropertyPriority('transform'),
-        transformOrigin: surface.style.getPropertyValue('transform-origin'),
-        transformOriginPriority: surface.style.getPropertyPriority('transform-origin'),
-      },
+    flushSync(() => patchView({
+      fullMounted: true,
+      targetExpanded: expanded,
+      coverVideoEnabled: false,
+      presentation: 'preparing',
+    }));
+    const publishGeometry = () => {
+      presentationFrame = 0;
+      if (destroyed || preparedPresentation?.revision !== revision) return;
+      if (viewport !== presentationViewport()) { invalidatePresentation(); return; }
+      measuredViewport = viewport;
+      options.onPresentationPrepared?.(revision, readCoverRect());
     };
-    coverOpening = opening;
-    try {
-      surface.style.setProperty('transform', transform);
-      surface.style.setProperty('transform-origin', '50% 50%');
-      const animation = surface.animate([
-        { transform, transformOrigin: '50% 50%' },
-        { transform: 'none', transformOrigin: '50% 50%' },
-      ], { duration: 300, easing: COVER_OPENING_EASING, fill: 'both' });
-      opening.animation = animation;
-      animation.pause();
-      animation.currentTime = 0;
-      surface.setAttribute(COVER_OPENING_ATTRIBUTE, 'true');
-      frame.setAttribute(COVER_OPENING_LAYER_ATTRIBUTE, 'true');
-      if (!getAlignedCoverOpeningRect(opening)) {
-        cancelCoverOpening();
-        return false;
-      }
-      opening.state = 'paused';
-      return true;
-    } catch (_) {
-      if (coverOpening === opening) coverOpening = null;
-      releaseCoverOpening(opening);
-      return false;
+    // A reopen at the same size can measure the mounted layout immediately.
+    // Waiting on the still-hidden frame's animation callbacks can skip the opening entirely.
+    if (expanded && viewport === measuredViewport) publishGeometry();
+    else {
+      presentationFrame = requestAnimationFrame(() => {
+        presentationFrame = requestAnimationFrame(publishGeometry);
+      });
     }
+    return true;
   }
 
-  function openingSurfaceHasTransform(surface) {
-    const style = getComputedStyle(surface);
-    const transform = style.transform;
-    return !!transform && transform !== 'none';
+  function invalidatePresentation() {
+    const revision = preparedPresentation?.revision;
+    if (revision === undefined) return;
+    clearPresentationPreparation();
+    options.onPresentationInvalidated?.(revision);
   }
 
-  function getAlignedCoverOpeningRect({ surface, origin }) {
-    const rect = surface.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0 || !['left', 'top', 'width', 'height'].every(key =>
-      Number.isFinite(rect[key]) && Math.abs(rect[key] - origin[key]) <= 2)) return null;
-    return rect;
-  }
-
-  function getPreparedCoverOpeningRect() {
-    const opening = coverOpening;
-    const target = opening && getCoverTransitionTarget();
-    if (!opening || opening.state !== 'paused' || opening.animation.playState !== 'paused'
-      || !opening.surface.isConnected || opening.songId !== target?.songId
-      || opening.frame !== coverFrameRef.current || opening.surface.parentElement !== coverRef.current) return null;
-    const rect = getAlignedCoverOpeningRect(opening);
-    if (!rect) return null;
-    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height,
-      radius: 0, viewportWidth: target.viewportWidth, viewportHeight: target.viewportHeight,
-      songId: opening.songId };
-  }
-
-  async function playCoverOpening() {
-    const opening = coverOpening;
-    if (!opening || opening.state !== 'paused') return false;
-    if (destroyed || !getPreparedCoverOpeningRect()) {
-      cancelCoverOpening();
-      return false;
+  function settlePresentation(expanded, revision) {
+    if (destroyed || typeof expanded !== 'boolean' || !Number.isSafeInteger(revision) || revision < 0) return false;
+    if (revision < latestPresentationRevision) return false;
+    latestPresentationRevision = revision;
+    if (!expanded && preparedPresentation?.expanded !== false) {
+      diagnostics.finish('collapsed');
+      closePanels(false);
+      coverVideoControllerRef.current?.disable();
     }
-    opening.state = 'playing';
-    try {
-      opening.animation.play();
-      await opening.animation.finished;
-      if (coverOpening === opening) {
-        coverOpening = null;
-        releaseCoverOpening(opening);
-        return true;
-      }
-      return false;
-    } catch (_) {
-      if (coverOpening === opening) cancelCoverOpening();
-      return false;
-    }
+    clearPresentationPreparation();
+    settledExpanded = expanded;
+    flushSync(() => {
+      store.set(config.isLyricPageOpenedAtom, expanded && visible && !document.hidden);
+      patchView({
+        presentation: expanded ? 'expanded' : 'compact', targetExpanded: expanded, fullMounted: true,
+        coverVideoEnabled: expanded,
+      });
+    });
+    if (destroyed || latestPresentationRevision !== revision || settledExpanded !== expanded) return true;
+    options.onPresentationSettled?.(expanded, revision);
+    if (expanded && document.hasFocus()) collapseButtonRef.current?.focus({ preventScroll: true });
+    return true;
   }
 
-  setCoverTransitionHidden(false);
+  function onLayoutChange() {
+    if (preparedPresentation?.viewport !== presentationViewport()) invalidatePresentation();
+  }
+
   const patchView = (patch) => {
     const previous = store.get(viewAtom);
     if (Object.keys(patch).some(key => !Object.is(previous[key], patch[key]))) store.set(viewAtom, { ...previous, ...patch });
@@ -806,7 +712,7 @@ export function createPlayer(host, options = {}) {
   setCallback('onRequestOpenMenuAtom', toggleMenu);
   setCallback('onLyricLineClickAtom', (event) => command('seek', seekPosition(event.line.getLine().startTime, 0, offset)));
   store.set(config.showBottomControlAtom, true);
-  store.set(config.isLyricPageOpenedAtom, true);
+  store.set(config.isLyricPageOpenedAtom, false);
   store.set(config.hideLyricViewAtom, false);
 
   const fontLoader = createImportedFontLoader(fontFamily => {
@@ -909,9 +815,6 @@ export function createPlayer(host, options = {}) {
     const songChanged = key !== oldKey;
     if (songChanged) {
       coverVideoControllerRef.current?.disable();
-      cancelCoverOpening();
-      coverImageProbe = null;
-      setCoverTransitionHidden(false);
       favoriteRequest++;
       diagnostics.finish('song-changed');
       lastArgs = undefined;
@@ -920,6 +823,15 @@ export function createPlayer(host, options = {}) {
       patchView({ status: 'loading', providers: [], providerPreference: 'auto', offset: 0, translating: false, plain: null, source: '', displayFeedback: {}, isFavorited: null, canFavorite: false, favoriteBusy: false });
       resetTimeBaseline();
       updateTick(0);
+    }
+    if (info.artwork !== song.artwork) {
+      openingArtwork = null;
+      if (info.artwork) {
+        openingArtwork = new Image();
+        openingArtwork.decoding = 'async';
+        openingArtwork.src = info.artwork;
+        openingArtwork.decode().catch(() => {});
+      }
     }
     song = info;
     patchView({ coverSongId: String(info.appleId || '') });
@@ -930,6 +842,9 @@ export function createPlayer(host, options = {}) {
     store.set(data.musicCoverAtom, info.artwork || '');
     store.set(data.musicCoverIsVideoAtom, false);
     store.set(data.musicDurationAtom, Math.max(0, (Number(info.duration) || 0) * 1000));
+    if (songChanged) {
+      invalidatePresentation();
+    }
     if (songChanged && store.get(viewAtom).queueOpen) {
       patchView({ queue: { position: 0, items: [], canSelect: false }, queueLoading: true, queueError: false });
       refreshQueue();
@@ -997,7 +912,7 @@ export function createPlayer(host, options = {}) {
       const timer = setTimeout(() => setRetainedPanel(null), 200);
       return () => clearTimeout(timer);
     }, [panelType, retainedPanel]);
-    useLayoutEffect(() => { options.onReady?.(); return () => {}; }, []);
+    useLayoutEffect(() => { options.onReady?.(); }, []);
     useEffect(() => {
       const handlePlaybackKey = event => {
         if ((event.code !== 'Space' && event.key !== ' ') || event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
@@ -1095,7 +1010,7 @@ export function createPlayer(host, options = {}) {
     };
     if (['translate', 'both'].includes(view.displayMode)) addSecondaryStatus('translation', view.translating ? 'loading' : displayFeedback.translation);
     if (['romanize', 'both'].includes(view.displayMode)) addSecondaryStatus('romanization', displayFeedback.romanization);
-    return <div className={`lyplus-amll-player${isEmpty ? ' lyplus-amll-no-timed-lyrics' : ''}`}
+    const fullPlayer = view.fullMounted && <div className={`lyplus-amll-player${isEmpty ? ' lyplus-amll-no-timed-lyrics' : ''}`}
       style={{ '--lyplus-player-font': view.fontFamily || undefined }} data-custom-font={view.fontFamily ? 'true' : undefined}>
       <PrebuiltLyricPlayer
         className="lyplus-amll-layout"
@@ -1104,7 +1019,6 @@ export function createPlayer(host, options = {}) {
         onPlaylistOpenedChange={opened => opened ? toggleQueue() : closePanels()}
         playlistControls={visiblePanel === 'queue' ? PLAYER_QUEUE_PANEL_ID : undefined}
         playlistButtonLabel={label('playerQueue', 'Up next')}
-        coverFrameRef={coverFrameRef}
         coverProps={{
           ref: coverRef,
           className: 'lyplus-amll-cover',
@@ -1227,11 +1141,14 @@ export function createPlayer(host, options = {}) {
       </div>}
       {view.toast && <div className="lyplus-amll-toast" role="status">{view.toast}</div>}
     </div>;
+    return <div className="lyplus-presentation" data-presentation={view.presentation}>
+      <div className="lyplus-presentation-full" inert={!view.targetExpanded} aria-hidden={!view.targetExpanded || undefined}>
+        {fullPlayer}
+      </div>
+    </div>;
   }
 
-  root = createRoot(host, { onUncaughtError: (error) => { console.error('YouLy+ AMLL:', error); options.onFallback?.(); } });
-  root.render(<Provider store={store}><PlayerView /></Provider>);
-  return {
+  const api = {
     updateSong, displayLyrics, updateCurrentTick: updateTick,
     updatePlayback(state) {
       if (destroyed) return;
@@ -1263,30 +1180,52 @@ export function createPlayer(host, options = {}) {
       diagnostics.finish('settings-changed');
       applySettings(next);
       if (lastArgs) { lastArgs[3] = settings; lastArgs[6] = settings.largerTextMode || 'lyrics'; displayLyrics(...lastArgs); }
+      if (settings.lightweight) invalidatePresentation();
     },
-    getCoverTransitionTarget,
-    prepareCoverOpening,
-    getPreparedCoverOpeningRect,
-    playCoverOpening,
-    cancelCoverOpening,
-    setCoverTransitionHidden,
-    setCoverVideoEnabled(enabled) {
-      if (enabled !== true) { revokeCoverVideo(); return; }
-      if (!destroyed) patchView({ coverVideoEnabled: true });
-    },
+    preparePresentation,
+    settlePresentation,
     updateDisplayMode(lyrics, displayMode, nextSettings) {
       if (lastArgs) { lastArgs[0] = lyrics; lastArgs[2] = displayMode; lastArgs[3] = nextSettings || settings; displayLyrics(...lastArgs); }
     },
     setUserOffset(value) { offset = Number(value) || 0; if (lastArgs) lastArgs[11] = offset; patchView({ offset }); },
     setAvailableProviders(providers) { patchView({ providers: [...new Set(providers || [])] }); },
-    setVisible(value) { if (!value) { cancelCoverOpening(); diagnostics.finish('hidden'); } store.set(config.isLyricPageOpenedAtom, value); applySettings({}); },
+    setVisible(value) {
+      visible = !!value;
+      if (!visible) {
+        diagnostics.finish('hidden');
+        invalidatePresentation();
+      }
+      store.set(config.isLyricPageOpenedAtom, visible && settledExpanded && !document.hidden);
+      applySettings({});
+    },
     setTranslationLoading(value) { patchView({ translating: !!value }); },
     showToast: toast,
     displaySongNotFound() { store.set(data.musicLyricLinesAtom, []); patchView({ status: 'empty' }); },
     displaySongError() { store.set(data.musicLyricLinesAtom, []); patchView({ status: 'error' }); },
     cleanupLyrics() { diagnostics.finish('lyrics-reloading'); store.set(data.musicLyricLinesAtom, []); patchView({ status: 'loading' }); },
-    dispose() { destroyed = true; coverVideoControllerRef.current?.disable(); cancelCoverOpening(); setCoverTransitionHidden(false); coverImageProbe = null; fontLoader.dispose(); diagnostics.dispose(); diagnosticReport = null; clearTimeout(toastTimer); clearTimeout(downloadTimer); if (downloadURL) URL.revokeObjectURL(downloadURL); store.set(config.isLyricPageOpenedAtom, false); root.unmount(); root = null; },
+    dispose() {
+      destroyed = true;
+      clearPresentationPreparation();
+      openingArtwork = null;
+      window.removeEventListener('resize', onLayoutChange);
+      coverVideoControllerRef.current?.disable();
+      fontLoader.dispose();
+      diagnostics.dispose();
+      diagnosticReport = null;
+      clearTimeout(toastTimer);
+      clearTimeout(downloadTimer);
+      if (downloadURL) URL.revokeObjectURL(downloadURL);
+      store.set(config.isLyricPageOpenedAtom, false);
+      root.unmount();
+      root = null;
+    },
   };
+  if (options.initialSong) api.updateSong(options.initialSong);
+  if (options.initialPlayback) api.updatePlayback(options.initialPlayback);
+  window.addEventListener('resize', onLayoutChange);
+  root = createRoot(host, { onUncaughtError: (error) => { console.error('YouLy+ AMLL:', error); options.onFallback?.(); } });
+  root.render(<Provider store={store}><PlayerView /></Provider>);
+  return api;
 }
 
 globalThis.LyPlusAMLL = { createPlayer };

@@ -2,12 +2,12 @@
 let currentSongInfo = {};
 let amllPlayer = null;
 let amllHost = null;
-let amllModal = null;
-let closingHost = null;
-let miniCoverOrigin = null;
-let coverFlight = null;
-let openingArtwork = null;
-let nativeOpeningTimer = null;
+let amllLayers = null;
+let presentationRevision = 0;
+let presentation = null;
+let playerExpanded = false;
+let frameReady = false;
+let activeArtwork = null;
 let nativeMode = false;
 let trackerInjected = false;
 let platformStarted = false;
@@ -182,307 +182,276 @@ function sendPlayerCommand(command, value) {
 const applePlayerBar = '[data-testid="player-bar"]';
 const appleMiniArtwork = '[data-testid="now-playing-artwork-button"], [data-testid="player-lcd-artwork"]';
 const appleLyricsModal = 'article[data-testid="lyrics-fullscreen-modal"]';
-const openingCoverAttribute = 'data-lyplus-amll-opening-cover';
 
-function artworkAsset(url) {
-    try {
-        const parsed = new URL(url);
-        if (parsed.protocol !== 'https:' || !/(^|\.)mzstatic\.com$/i.test(parsed.hostname) || !parsed.pathname.startsWith('/image/')) return '';
-        return parsed.pathname.replace(/\/\d+x\d+[^/]*$/, '');
-    } catch (_) { return ''; }
-}
-
-function canMoveCover() {
-    return currentSettings.isEnabled && currentSettings.appleMusicAMLL !== false && !currentSettings.lightweight
-        && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches
-        && typeof HTMLElement.prototype.showPopover === 'function' && typeof Element.prototype.animate === 'function';
-}
-
-function preloadOpeningArtwork() {
-    const url = currentSongInfo.artwork;
-    if (openingArtwork?.url === url) return;
-    openingArtwork = null;
-    if (!canMoveCover() || !currentSongInfo.appleId || !artworkAsset(url)) return;
-    const image = new Image();
-    image.src = url;
-    const prepared = openingArtwork = { url, image, ready: false };
-    // Reuse this decoded image for opening instead of scaling the page thumbnail.
-    image.decode().then(() => {
-        prepared.ready = Math.min(image.naturalWidth, image.naturalHeight) >= 512;
-    }, () => {});
-}
-
-function readMiniCover() {
-    const songId = String(currentSongInfo.appleId || '');
-    const asset = artworkAsset(currentSongInfo.artwork);
-    if (!songId || !asset) return null;
+function nativeBarCandidate() {
+    if (!currentSettings.isEnabled || currentSettings.appleMusicAMLL === false || !currentSongInfo.appleId
+        || !currentSongInfo.title || document.querySelector(appleLyricsModal)) return null;
+    let usable = null;
     for (const bar of document.querySelectorAll(applePlayerBar)) {
-        for (const artwork of bar.querySelectorAll(appleMiniArtwork)) {
-            if (artwork.closest(appleLyricsModal)) continue;
-            const roots = [artwork];
-            for (const root of roots) {
-                for (const img of root.querySelectorAll('img')) {
-                    const src = img.currentSrc || img.src;
-                    if (!img.complete || img.naturalWidth < 2 || artworkAsset(src) !== asset) continue;
-                    const { left, top, width, height } = img.getBoundingClientRect();
-                    const style = getComputedStyle(img);
-                    if (style.visibility !== 'visible' || style.opacity === '0' || width < 12 || height < 12
-                        || left < 0 || top < 0 || left + width > innerWidth + 1 || top + height > innerHeight + 1) continue;
-                    const radius = parseFloat(style.borderTopLeftRadius)
-                        || parseFloat(getComputedStyle(artwork).borderTopLeftRadius) || Math.min(width, height) * 0.08;
-                    return { src, asset, songId, left, top, width, height, radius, viewportWidth: innerWidth,
-                        viewportHeight: innerHeight };
-                }
-                for (const element of root.querySelectorAll('*')) if (element.shadowRoot) roots.push(element.shadowRoot);
-            }
-        }
+        if (!bar.isConnected || bar.closest(appleLyricsModal)) continue;
+        const rect = bar.getBoundingClientRect();
+        const style = getComputedStyle(bar);
+        if (rect.width < 120 || rect.height < 32 || style.visibility !== 'visible' || style.opacity === '0'
+            || rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth || rect.top >= innerHeight) continue;
+        if (!usable) usable = bar;
     }
-    return null;
+    return usable;
 }
 
-function miniCoverMatches(cover) {
-    return cover && cover.songId === String(currentSongInfo.appleId || '') && cover.asset === artworkAsset(currentSongInfo.artwork)
-        && cover.viewportWidth === innerWidth && cover.viewportHeight === innerHeight;
+function measuredCapsule(bar) {
+    const root = bar.getBoundingClientRect();
+    const nodes = [bar];
+    let best = null;
+    for (let i = 0; i < nodes.length && i < 300; i++) {
+        const element = nodes[i];
+        nodes.push(...(element.shadowRoot?.children || []), ...element.children);
+        const rect = element.getBoundingClientRect();
+        if (rect.width < 320 || rect.height < 40 || rect.height > 88 || rect.width > root.width + 1
+            || rect.left < root.left - 1 || rect.right > root.right + 1 || rect.top < root.top - 1 || rect.bottom > root.bottom + 1) continue;
+        const style = getComputedStyle(element);
+        if (style.visibility !== 'visible' || style.opacity === '0') continue;
+        const radius = parseFloat(style.borderTopLeftRadius) || 0;
+        const background = style.backgroundColor;
+        const tinted = background && background !== 'transparent' && !/rgba\([^)]*,\s*0\)$/.test(background);
+        const material = (style.backdropFilter && style.backdropFilter !== 'none') || style.boxShadow !== 'none';
+        if (radius < 8 || (!tinted && !material)) continue;
+        const score = rect.width * rect.height + radius * 1000;
+        if (!best || score > best.score) best = { element, score };
+    }
+    return best?.element;
 }
 
-function clearNativeOpening() {
-    if (nativeOpeningTimer === null) return;
-    clearTimeout(nativeOpeningTimer);
-    nativeOpeningTimer = null;
-    document.documentElement.removeAttribute(openingCoverAttribute);
+function readPresentationOrigin(bar, artwork) {
+    if (!bar?.isConnected || bar.closest(appleLyricsModal)) return null;
+    const measured = measuredCapsule(bar);
+    const rect = (measured || bar).getBoundingClientRect();
+    const preferred = artwork?.closest(appleMiniArtwork);
+    const button = preferred && bar.contains(preferred) ? preferred : bar.querySelector(appleMiniArtwork);
+    const cover = button?.getBoundingClientRect();
+    // If the bar only gives us a large wrapper, anchor to the actual artwork button.
+    const anchor = measured || (rect.width > 0 && rect.width <= 900 && rect.height > 0 && rect.height <= 88)
+        ? rect : cover;
+    if (!anchor || anchor.width <= 0 || anchor.height <= 0 || anchor.top >= innerHeight || anchor.bottom <= 0) return null;
+    const radiusStyle = measured ? getComputedStyle(measured).borderTopLeftRadius : '';
+    const radius = radiusStyle.endsWith('%') ? parseFloat(radiusStyle) * rect.height / 100 : parseFloat(radiusStyle);
+    return { left: anchor.left, top: anchor.top, width: anchor.width, height: anchor.height,
+        radius: radius || rect.height / 2, capsule: Boolean(measured), cover };
 }
 
-function captureMiniCover(event) {
-    if (!event.isTrusted || nativeMode || amllHost?.isConnected || !canMoveCover()
-        || !globalThis.LyPlusAMLLFrame?.createPlayer) return;
-    if (event.type === 'keydown' ? event.repeat || !['Enter', ' '].includes(event.key) : event.button !== 0) return;
-    if (!event.composedPath().some(node => node instanceof Element && node.matches(appleMiniArtwork) && node.closest(applePlayerBar))
-        || document.querySelector(appleLyricsModal)) return;
-    if (event.type === 'click' && nativeOpeningTimer !== null && miniCoverMatches(miniCoverOrigin)) {
-        clearTimeout(nativeOpeningTimer);
+function applyPresentation() {
+    if (!amllHost) return;
+    const shown = presentation ? presentation.shown : playerExpanded;
+    const interactive = shown && !presentation;
+    amllHost.toggleAttribute('data-shown', shown);
+    amllHost.toggleAttribute('data-interactive', interactive);
+    amllHost.toggleAttribute('inert', !shown);
+    amllLayers.frame.tabIndex = interactive ? 0 : -1;
+    if (shown) {
+        amllHost.removeAttribute('aria-hidden');
     } else {
-        clearNativeOpening();
-        miniCoverOrigin = readMiniCover();
-        if (!miniCoverOrigin) return;
-        preloadOpeningArtwork();
-        if (!openingArtwork?.ready || openingArtwork.url !== currentSongInfo.artwork
-            || !document.querySelector('link[data-lyrics-plus-platform-style]')?.sheet) return;
-        // Arm before Apple's handler can insert or paint the native large cover.
-        document.documentElement.setAttribute(openingCoverAttribute, 'true');
-    }
-    nativeOpeningTimer = setTimeout(() => {
-        clearNativeOpening();
-        if (coverFlight?.opening) clearCoverFlight();
-    }, 450);
-}
-
-function coverInPage(target, host, source) {
-    if (target?.songId !== source.songId || !['left', 'top', 'width', 'height', 'radius', 'viewportWidth', 'viewportHeight']
-        .every(key => Number.isFinite(target[key])) || target.width < 12 || target.height < 12
-        || target.viewportWidth < 12 || target.viewportHeight < 12 || target.radius < 0
-        || target.left < -1 || target.top < -1 || target.left + target.width > target.viewportWidth + 1
-        || target.top + target.height > target.viewportHeight + 1) return null;
-    const frame = host.getBoundingClientRect();
-    if (!frame.width || !frame.height) return null;
-    const x = frame.width / target.viewportWidth, y = frame.height / target.viewportHeight;
-    return { left: frame.left + target.left * x, top: frame.top + target.top * y,
-        width: target.width * x, height: target.height * y, radius: target.radius * Math.min(x, y) };
-}
-
-function clearCoverFlight(flight = coverFlight) {
-    if (!flight || flight !== coverFlight) return;
-    coverFlight = null;
-    flight.animation?.cancel();
-    flight.image.remove();
-    if (flight.opening) {
-        clearNativeOpening();
-        flight.player.cancelCoverOpening();
-    }
-    if (flight.hidden) void flight.player.setCoverTransitionHidden(false);
-}
-
-function beginCoverFlight(player, host, source, decodedImage) {
-    clearCoverFlight();
-    const image = decodedImage || new Image();
-    image.className = 'lyplus-amll-cover-flight';
-    image.setAttribute('popover', 'manual');
-    image.setAttribute('aria-hidden', 'true');
-    image.alt = '';
-    if (!decodedImage) {
-        image.decoding = 'sync';
-        image.src = source.src;
-    }
-    coverFlight = { image, player, host, source };
-    return coverFlight;
-}
-
-function flightIsCurrent(flight) {
-    return coverFlight === flight && amllHost === flight.host && flight.host.isConnected && !nativeMode
-        && canMoveCover() && miniCoverMatches(flight.source);
-}
-
-async function waitForCover(flight) {
-    const until = performance.now() + 180;
-    while (flightIsCurrent(flight)) {
-        if (flight.image.complete) {
-            if (!flight.image.naturalWidth) return null;
-            const target = await flight.player.getCoverTransitionTarget();
-            if (!flightIsCurrent(flight)) return null;
-            if (target) return target;
-        }
-        if (performance.now() >= until) return null;
-        await new Promise(resolve => setTimeout(resolve, 32));
-    }
-    return null;
-}
-
-function placeCoverImage(image, rect) {
-    Object.assign(image.style, { left: rect.left + 'px', top: rect.top + 'px', width: rect.width + 'px',
-        height: rect.height + 'px', borderRadius: rect.radius + 'px' });
-}
-
-function showCoverImage(flight, from) {
-    placeCoverImage(flight.image, from);
-    document.body.appendChild(flight.image);
-    flight.image.showPopover();
-}
-
-function moveCoverImage(flight, from, to) {
-    const { image } = flight;
-    placeCoverImage(image, to);
-    const x = from.width / to.width, y = from.height / to.height;
-    flight.animation = image.animate([
-        { transform: 'translate(' + (from.left - to.left) + 'px, ' + (from.top - to.top) + 'px) scale(' + x + ', ' + y + ')',
-            borderRadius: from.radius / x + 'px / ' + from.radius / y + 'px' },
-        { transform: 'none', borderRadius: to.radius + 'px' },
-    ], { duration: 300, easing: 'cubic-bezier(0.22, 0.8, 0.2, 1)', fill: 'both' });
-    return flight.animation.finished;
-}
-
-function stageOpeningCover(host, player, source) {
-    // If the native cover might already have painted, never animate back from a thumbnail.
-    if (nativeOpeningTimer === null || !canMoveCover() || !miniCoverMatches(source)) return null;
-    const prepared = openingArtwork;
-    if (!prepared?.ready || prepared.url !== currentSongInfo.artwork) return null;
-    let flight;
-    try {
-        flight = beginCoverFlight(player, host, source, prepared.image);
-        flight.opening = true;
-        showCoverImage(flight, source);
-        if (!flight.image.matches(':popover-open')) { clearCoverFlight(flight); return null; }
-        return flight;
-    } catch (_) {
-        if (flight) clearCoverFlight(flight);
-        return null;
+        amllHost.setAttribute('aria-hidden', 'true');
     }
 }
 
-async function revealAMLL(modal, host, player, flight) {
-    const activate = (openingSettled = false) => {
-        if (amllHost !== host || closingHost === host || !host.isConnected || nativeMode) return;
-        if (!modal.hasAttribute('data-lyplus-amll-active')) {
-            modal.setAttribute('data-lyplus-amll-active', 'true');
-            host.focus({ preventScroll: true });
-        }
-        if (openingSettled) player.setCoverVideoEnabled(true);
-    };
-    if (!flight || !flightIsCurrent(flight)) {
-        if (flight) clearCoverFlight(flight);
-        activate(true);
-        return;
-    }
-    const { source } = flight;
-    try {
-        const target = await waitForCover(flight);
-        if (!target || !coverInPage(target, host, source) || !flight.image.matches(':popover-open')) return;
-        const frame = host.getBoundingClientRect();
-        const x = target.viewportWidth / frame.width, y = target.viewportHeight / frame.height;
-        if (!await player.prepareCoverOpening({
-            left: (source.left - frame.left) * x, top: (source.top - frame.top) * y,
-            width: source.width * x, height: source.height * y, songId: source.songId,
-        }) || !flightIsCurrent(flight)) return;
-        activate();
-        clearNativeOpening();
-        const painted = coverInPage(await player.awaitCoverOpeningPaint(), host, source);
-        if (!flightIsCurrent(flight) || !painted || !['left', 'top', 'width', 'height']
-            .every(key => Math.abs(painted[key] - source[key]) <= 2)) return;
-        // Transfer ownership while both covers are still at thumbnail size.
-        // Only the real cover moves after this point, so there is no swap at the destination.
-        flight.image.remove();
-        await player.playCoverOpening();
-    } catch (_) { /* The cover effect is optional; reveal the player normally. */ }
-    finally {
-        clearCoverFlight(flight);
-        activate(true);
-    }
+function watchPresentation(run) {
+    clearTimeout(run.timer);
+    const preparing = run.phase === 'preparing';
+    run.timer = setTimeout(() => {
+        if (presentation !== run || document.hidden) return;
+        if (preparing) commitPresentation(run, true);
+        else showNativePlayer();
+    }, preparing ? 350 : 2500);
 }
 
-function unmountAMLL(preserveClosingCover = false) {
-    if (!preserveClosingCover || !coverFlight?.dismissed) clearCoverFlight();
-    amllModal?.removeAttribute('data-lyplus-amll-active');
+function clearPresentation() {
+    const run = presentation;
+    presentation = null;
+    if (!run) return;
+    clearTimeout(run.timer);
+    run.motion?.dispose();
+}
+
+function unmountAMLL() {
+    clearPresentation();
     amllPlayer?.dispose();
     amllPlayer = null;
     amllHost?.remove();
     amllHost = null;
-    closingHost = null;
+    amllLayers = null;
+    playerExpanded = false;
+    frameReady = false;
+    activeArtwork = null;
 }
 
 function showNativePlayer() {
     nativeMode = true;
-    clearNativeOpening();
     unmountAMLL();
-    if (!amllModal?.isConnected || amllModal.querySelector('#lyplus-amll-restore')) return;
-    const button = document.createElement('button');
-    button.id = 'lyplus-amll-restore';
-    button.type = 'button';
-    button.textContent = 'Muisc+ · AMLL';
-    button.addEventListener('click', () => { nativeMode = false; button.remove(); mountAMLL(); });
-    amllModal.appendChild(button);
 }
 
-function dismissAMLL(modal, host) {
-    if (!modal.isConnected || amllModal !== modal || amllHost !== host) return;
-    const scope = modal.closest('[data-testid="modal"]') || modal.parentElement;
-    const close = modal.querySelector('[data-testid="lyrics-fullscreen-modal-close-button"]')
-        || [...(scope?.querySelectorAll('[data-testid="close-button"], [data-testid="close-modal"], button[aria-label="Close"], button[aria-label="关闭"], .lyrics__close-button, .close-button') || [])]
-        .find(element => !amllHost?.contains(element));
-    if (close) close.click();
-    else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
-    // Let Apple's exit animation finish before restoring the native controls if dismissal failed.
-    setTimeout(() => {
-        if (amllHost === host && amllModal === modal && modal.isConnected) showNativePlayer();
-    }, close ? 600 : 100);
+function startPresentation(expanded, bar, artwork) {
+    if (!amllHost?.isConnected || !amllPlayer || !frameReady || nativeMode || presentation || expanded === playerExpanded) return false;
+    const revision = ++presentationRevision;
+    const animate = Boolean(globalThis.LyPlusAMLLPresentation?.create && !document.hidden
+        && !currentSettings.lightweight && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (expanded && cachedPlaybackState) amllPlayer.updatePlayback(cachedPlaybackState);
+    const sent = animate ? amllPlayer.preparePresentation(expanded, revision) : amllPlayer.settlePresentation(expanded, revision);
+    if (!sent) return false;
+    const run = presentation = {
+        revision, expanded, bar, artwork, shown: playerExpanded, phase: animate ? 'preparing' : 'settling',
+        restoreFocus: document.activeElement === amllLayers.frame, pass: 0,
+    };
+    applyPresentation();
+    watchPresentation(run);
+    return true;
 }
 
-async function closePlayer() {
-    const modal = amllModal, host = amllHost, player = amllPlayer;
-    if (!host?.isConnected || !modal?.isConnected || !player || closingHost === host) return;
-    closingHost = host;
-    player.setCoverVideoEnabled(false);
-    if (coverFlight || !modal.hasAttribute('data-lyplus-amll-active') || !canMoveCover()) {
-        clearCoverFlight();
-        dismissAMLL(modal, host);
+function commitPresentation(run, cut = false) {
+    if (!run || presentation !== run) return;
+    if (cut && run.motion) {
+        // Cancelling the slide leaves the frame at its expanded pose. Only
+        // hide it when closing, so an interrupted opening cannot expose the page.
+        if (!run.expanded) {
+            run.shown = false;
+            applyPresentation();
+        }
+        run.motion.dispose();
+        run.motion = null;
+    }
+    if (run.phase === 'settling') return;
+    run.phase = 'settling';
+    if (amllPlayer?.settlePresentation(run.expanded, run.revision)) watchPresentation(run);
+    else showNativePlayer();
+}
+
+function presentationBackground(bar) {
+    const content = document.querySelector('[data-testid="app-container"] #scrollable-page');
+    if (!content || content.contains(bar)
+        || content.querySelector(`${applePlayerBar}, ${appleLyricsModal}, dialog[open], [aria-modal="true"]`)) return null;
+    const rect = content.getBoundingClientRect();
+    const style = getComputedStyle(content);
+    return rect.width >= innerWidth * .5 && rect.height >= innerHeight * .5
+        && [style.transform, style.scale, style.rotate, style.translate].every(value => !value || value === 'none') ? content : null;
+}
+
+function presentationPrepared(revision, cover) {
+    const run = presentation;
+    if (run?.revision !== revision || run.phase !== 'preparing') return;
+    if (document.hidden) {
+        commitPresentation(run);
         return;
     }
-    const source = readMiniCover() || miniCoverOrigin;
-    if (!miniCoverMatches(source)) { dismissAMLL(modal, host); return; }
-    const flight = beginCoverFlight(player, host, source);
+    const origin = readPresentationOrigin(run.bar, run.artwork);
+    run.motion = globalThis.LyPlusAMLLPresentation.create({
+        stage: amllHost, ...amllLayers, origin, cover, expanded: playerExpanded,
+        background: origin ? presentationBackground(run.bar) : null,
+    });
+    if (!run.motion) { commitPresentation(run); return; }
+    playPresentation(run, run.expanded);
+}
+
+function playPresentation(run, expanded) {
+    const animations = run.motion.animations;
+    const primary = animations[0];
+    const time = Number(primary.currentTime) || 0;
+    const rate = expanded === playerExpanded ? -1 : 1;
+    const pass = ++run.pass;
+    run.expanded = expanded;
+    if (rate === -1 && time <= 0) { commitPresentation(run); return; }
+    const firstReveal = !run.shown;
+    run.phase = 'moving';
+    run.shown = true;
+    applyPresentation();
+    watchPresentation(run);
+    if (firstReveal) amllLayers.frame.focus({ preventScroll: true });
     try {
-        const target = await waitForCover(flight);
-        const start = target && coverInPage(target, host, source);
-        if (!start || !flightIsCurrent(flight)) return;
-        showCoverImage(flight, start);
-        flight.hidden = true;
-        if (!await player.setCoverTransitionHidden(true) || !flightIsCurrent(flight)) return;
-        const moving = moveCoverImage(flight, start, source);
-        flight.dismissed = true;
-        dismissAMLL(modal, host);
-        await moving;
-    } catch (_) { /* Fall through to the ordinary close path. */ }
-    finally {
-        clearCoverFlight(flight);
-        if (!flight.dismissed) dismissAMLL(modal, host);
+        // Share a single timeline instant. Reversing uses the position already
+        // on screen, without asking the child to lay out or start a new motion.
+        const now = document.timeline.currentTime;
+        for (const animation of animations) {
+            animation.playbackRate = rate;
+            animation.currentTime = time;
+            if (Number.isFinite(now)) animation.startTime = now - time / rate;
+            else animation.play();
+        }
+        primary.finished.then(() => {
+            if (run.phase === 'moving' && run.pass === pass) commitPresentation(run);
+        }, () => {});
+    } catch (_) {
+        commitPresentation(run, true);
     }
+}
+
+function presentationSettled(expanded, revision) {
+    const run = presentation;
+    if (run?.revision !== revision || run.phase !== 'settling' || run.expanded !== expanded) return;
+    const focusedInside = run.restoreFocus || document.activeElement === amllLayers.frame;
+    playerExpanded = expanded;
+    clearPresentation();
+    applyPresentation();
+    if (expanded) {
+        if (!focusedInside) amllLayers.frame.focus({ preventScroll: true });
+        return;
+    }
+    const reopenBar = run.reopen && !document.hidden ? nativeBarCandidate() : null;
+    const artwork = activeArtwork?.isConnected ? activeArtwork
+        : (reopenBar || (focusedInside ? nativeBarCandidate() : null))?.querySelector(appleMiniArtwork);
+    activeArtwork = null;
+    if (reopenBar && startPresentation(true, reopenBar, artwork)) {
+        activeArtwork = artwork;
+        return;
+    }
+    if (focusedInside) artwork?.focus({ preventScroll: true });
+}
+
+function closePlayer() {
+    const run = presentation;
+    if (run) {
+        if (!run.expanded) { run.reopen = false; return; }
+        if (run.phase === 'settling') return;
+        if (run.phase === 'moving') playPresentation(run, false);
+        else { run.expanded = false; commitPresentation(run, true); }
+        return;
+    }
+    if (!playerExpanded) return;
+    startPresentation(false, nativeBarCandidate(), activeArtwork);
+}
+
+function closeOnEscape(event) {
+    if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || (!presentation && !playerExpanded)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closePlayer();
+}
+
+function interceptMiniArtwork(event) {
+    if (!event.isTrusted || event.defaultPrevented || event.type !== 'click' || event.button !== 0
+        || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (nativeMode || !frameReady || !amllHost?.isConnected || !amllPlayer || document.querySelector(appleLyricsModal)) return;
+    const run = presentation;
+    const closingAtEnd = run?.phase === 'settling' && !run.expanded;
+    if ((closingAtEnd || (run?.phase === 'moving' && !run.expanded)) && amllHost.contains(event.target)
+        && run.motion?.hitsCover(event.clientX, event.clientY)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (closingAtEnd) run.reopen = true;
+        else playPresentation(run, true);
+        return;
+    }
+    if (playerExpanded && !closingAtEnd) return;
+    const path = event.composedPath();
+    const artwork = path.find(node => node instanceof Element && node.matches(appleMiniArtwork)
+        && node.closest(applePlayerBar) && !node.closest(appleLyricsModal));
+    if (!artwork) return;
+    const bar = artwork.closest(applePlayerBar);
+    if (closingAtEnd) {
+        run.reopen = true;
+    } else if (!run) {
+        if (!startPresentation(true, bar, artwork)) return;
+        activeArtwork = path.find(node => node instanceof HTMLElement && node.matches('button, [role="button"]')
+            && node.closest(applePlayerBar) === bar) || artwork;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
 }
 
 async function updateLocalTTML(appleId, lyrics, remove = false) {
@@ -500,31 +469,51 @@ async function updateLocalTTML(appleId, lyrics, remove = false) {
 
 function mountAMLL() {
     const modal = document.querySelector(appleLyricsModal);
-    if (modal !== amllModal) {
-        unmountAMLL(!modal);
-        amllModal?.querySelector('#lyplus-amll-restore')?.remove();
-        amllModal = modal;
-        nativeMode = false;
+    // Apple's own lyrics modal owns the fullscreen view. Keep its native UI
+    // intact and leave the compact extension frame out of the way.
+    if (modal) { if (amllHost?.isConnected) unmountAMLL(); return; }
+    if (!currentSettings.isEnabled || currentSettings.appleMusicAMLL === false || nativeMode) {
+        if (amllHost) unmountAMLL();
+        return;
     }
-    if (!currentSettings.isEnabled || currentSettings.appleMusicAMLL === false || !modal || nativeMode) { unmountAMLL(!modal); return; }
-    if (amllHost?.isConnected && amllPlayer) return;
+    if (amllHost?.isConnected && amllPlayer && amllHost.parentNode === document.body) return;
+    const bar = nativeBarCandidate();
+    if (!bar) { if (amllHost) unmountAMLL(); return; }
     if (amllPlayer) unmountAMLL();
     if (!globalThis.LyPlusAMLLFrame?.createPlayer) { console.warn('YouLy+: AMLL frame bridge is unavailable'); return; }
-    const recent = nativeOpeningTimer !== null && miniCoverMatches(miniCoverOrigin);
-    const source = canMoveCover() ? (recent ? miniCoverOrigin : readMiniCover()) : null;
-    miniCoverOrigin = miniCoverMatches(source) ? source : null;
-    const host = document.createElement('iframe');
-    host.id = 'lyplus-amll-root';
+    const host = document.createElement('div');
+    const plane = document.createElement('div');
+    const scrim = document.createElement('div');
+    const frame = document.createElement('iframe');
+    host.id = 'lyplus-amll-scene';
+    plane.className = 'lyplus-amll-plane';
+    scrim.className = 'lyplus-amll-scrim';
+    frame.id = 'lyplus-amll-root';
     host.setAttribute('role', 'region');
     host.setAttribute('aria-label', 'Muisc+ player');
-    modal.appendChild(host);
+    host.setAttribute('aria-hidden', 'true');
+    host.setAttribute('inert', '');
+    frame.tabIndex = -1;
+    host.hidden = true;
+    plane.append(scrim, frame);
+    host.append(plane);
+    document.body.appendChild(host);
     amllHost = host;
+    amllLayers = { plane, scrim, frame };
+    playerExpanded = false;
+    frameReady = false;
+    applyPresentation();
     const stylesReady = injectPlatformCSS();
-    let openingCover = null;
     try {
-        amllPlayer = globalThis.LyPlusAMLLFrame.createPlayer(host, {
+        amllPlayer = globalThis.LyPlusAMLLFrame.createPlayer(frame, {
             sendCommand: sendPlayerCommand, onClose: closePlayer, onFallback: showNativePlayer,
-            holdCoverOnOpen: () => !!openingCover && openingCover === coverFlight,
+            onPresentationPrepared: presentationPrepared,
+            onPresentationInvalidated: revision => {
+                if (presentation?.revision === revision) commitPresentation(presentation, true);
+            },
+            onPresentationSettled: presentationSettled,
+            getInitialSong: () => frameSongInfo(currentSongInfo),
+            getInitialPlayback: () => cachedPlaybackState,
             translate: (key) => typeof t === 'function' ? t(key) : '',
             getLanguage: getUserLanguage,
             settings: currentSettings,
@@ -541,12 +530,12 @@ function mountAMLL() {
             removeLocalTTML: (id) => updateLocalTTML(id, null, true),
             onReady: () => stylesReady.then(() => {
                 if (amllHost === host && host.isConnected && !nativeMode) {
-                    return revealAMLL(modal, host, amllPlayer, openingCover);
+                    host.hidden = false;
+                    frameReady = true;
+                    applyPresentation();
                 }
             }).catch(() => { if (amllHost === host) showNativePlayer(); }),
         });
-        if (recent) openingCover = stageOpeningCover(host, amllPlayer, source);
-        if (!openingCover) clearNativeOpening();
         amllPlayer.updateSettings(currentSettings);
         amllPlayer.updateSong(frameSongInfo(currentSongInfo));
         if (cachedPlaybackState) amllPlayer.updatePlayback(cachedPlaybackState);
@@ -601,7 +590,7 @@ const LyricsPlusAPI = {
         if (sample && Number.isSafeInteger(cachedPlaybackState?.sampleSequence)
             && sample.sampleSequence <= cachedPlaybackState.sampleSequence) return;
         if (cachedPlaybackState) cachedPlaybackState = { ...cachedPlaybackState, ...sample, currentTime: seconds };
-        amllPlayer?.updateCurrentTick(seconds, sample);
+        if (playerExpanded || presentation?.shown) amllPlayer?.updateCurrentTick(seconds, sample);
     },
     setTranslationLoading: (value) => amllPlayer?.setTranslationLoading(value),
     showToast: (...args) => amllPlayer?.showToast(...args),
@@ -624,15 +613,23 @@ window.initializeLyricsPlusPlatform = function () {
         if (records.some(record => !amllHost?.contains(record.target))) queueMount();
     });
     observer.observe(document.body, { childList: true, subtree: true });
-    for (const type of ['pointerdown', 'click', 'keydown']) window.addEventListener(type, captureMiniCover, true);
-    window.addEventListener('resize', () => { miniCoverOrigin = null; clearNativeOpening(); clearCoverFlight(); });
+    window.addEventListener('click', interceptMiniArtwork, true);
+    window.addEventListener('keydown', closeOnEscape, true);
+    const finishOnResize = () => commitPresentation(presentation, true);
+    window.addEventListener('resize', finishOnResize);
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) { clearNativeOpening(); clearCoverFlight(); }
         amllPlayer?.setVisible(!document.hidden);
-        if (!document.hidden && amllPlayer) sendPlayerCommand('snapshot').catch(() => {});
+        if (document.hidden) commitPresentation(presentation, true);
+        if (!document.hidden && amllPlayer) {
+            if (presentation) watchPresentation(presentation);
+            if (playerExpanded || presentation?.expanded) sendPlayerCommand('snapshot').catch(() => {});
+        }
     });
     window.addEventListener('pagehide', () => {
-        observer.disconnect(); clearNativeOpening(); unmountAMLL(); clearTimeout(libraryRefreshTimer);
+        observer.disconnect(); window.removeEventListener('click', interceptMiniArtwork, true);
+        window.removeEventListener('keydown', closeOnEscape, true);
+        window.removeEventListener('resize', finishOnResize);
+        unmountAMLL(); clearTimeout(libraryRefreshTimer);
         for (const pending of pendingCommands.values()) { clearTimeout(pending.timer); pending.reject(new Error('Player closed')); }
         pendingCommands.clear();
     }, { once: true });
@@ -640,11 +637,7 @@ window.initializeLyricsPlusPlatform = function () {
 };
 
 window.addEventListener('YOUPLUS_SETTINGS_UPDATED', (event) => {
-    if (!canMoveCover()) {
-        clearNativeOpening();
-        if (coverFlight?.opening) clearCoverFlight();
-    }
-    if (!currentSettings.isEnabled) { unmountAMLL(); return; }
+    if (!currentSettings.isEnabled || currentSettings.appleMusicAMLL === false) { nativeMode = false; unmountAMLL(); return; }
     injectDOMScript();
     window.initializeLyricsPlusPlatform();
     if (event.detail.changedKeys?.includes('appleMusicTitleCorrection')) refreshTitleFix();
@@ -658,6 +651,8 @@ window.addEventListener('YOUPLUS_SETTINGS_UPDATED', (event) => {
         cachedLyricsArguments[6] = event.detail.settings.largerTextMode || 'lyrics';
     }
     amllPlayer?.updateSettings(event.detail.settings);
+    commitPresentation(presentation, true);
+    queueMount();
 });
 
 window.addEventListener('message', (event) => {
@@ -672,9 +667,6 @@ window.addEventListener('message', (event) => {
         const nextSong = message.songInfo || {};
         const changed = songIdentity(nextSong) !== songIdentity(currentSongInfo);
         if (changed) {
-            miniCoverOrigin = null;
-            clearNativeOpening();
-            clearCoverFlight();
             clearTimeout(libraryRefreshTimer);
             resetLyricsSession();
             titleFixRequest++; titleFix = null;
@@ -682,9 +674,11 @@ window.addEventListener('message', (event) => {
             cachedLyricStatus = 'loading'; manualLyricsProvider = null; cachedPlaybackState = null;
             pendingLyricsProviderSwitch = null;
         }
+        const artworkChanged = nextSong.artwork !== currentSongInfo.artwork;
         currentSongInfo = nextSong;
-        preloadOpeningArtwork();
         amllPlayer?.updateSong(frameSongInfo(currentSongInfo));
+        if (amllHost && (changed || artworkChanged)) commitPresentation(presentation, true);
+        if (!amllHost) queueMount();
         if (changed) refreshTitleFix();
         if (message.type === 'LYPLUS_SONG_SNAPSHOT' && !cachedLyricsArguments && nextSong.title && currentSettings.isEnabled) fetchAndDisplayLyrics(nextSong, false);
     } else if (message.type === 'LYPLUS_NATIVE_LYRICS') {

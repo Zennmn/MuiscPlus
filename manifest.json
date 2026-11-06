@@ -68,6 +68,7 @@
         "src/modules/lyrics/settings.js",
         "src/modules/lyrics/lyricsManager.js",
         "src/modules/applemusic/framePlayer.js",
+        "src/modules/applemusic/presentationMotion.js",
         "src/modules/applemusic/index.js",
         "src/content.js"
       ]
