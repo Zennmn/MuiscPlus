@@ -482,6 +482,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 			enableBlur={enableLyricLineBlurEffect}
 			enableScale={enableLyricLineScaleEffect}
 			enableSpring={enableLyricLineSpringAnimation}
+			enableTextAutospace
 			wordFadeWidth={lyricWordFadeWidth}
 			lyricPlayer={lyricPlayerImplementation}
 			onLyricLineClick={handleLineClick}
@@ -757,7 +758,7 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 						coverIsVideo={musicCoverIsVideo}
 						ref={composedCoverRef}
 						musicPaused={
-							!musicIsPlaying && !musicCoverIsVideo && verticalImmerseCover
+							!musicIsPlaying && !musicCoverIsVideo && !verticalImmerseCover
 						}
 					/>
 				}

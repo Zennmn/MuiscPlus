@@ -4,6 +4,8 @@ export interface ChildNodeInfo {
 	width: number;
 	text: string;
 	isSpace: boolean;
+	/** Layout-only spacing discarded when this node starts a visual line. */
+	leadingSpacing?: number;
 }
 
 /**
@@ -75,6 +77,27 @@ export function calcBalancedBreaks(
 		return [];
 	}
 
+	const isMixed =
+		/\p{Script=Latin}/u.test(fullText) && [...fullText].some(isCJK);
+	const previousScripts = new Int8Array(n + 1);
+	const nextScripts = new Int8Array(n + 1);
+	if (isMixed) {
+		const scriptOf = (ch: string) =>
+			isCJK(ch) ? 2 : /\p{Script=Latin}/u.test(ch) ? 1 : 0;
+		for (let i = 0; i < n; i++) {
+			previousScripts[i + 1] = previousScripts[i];
+			for (const ch of children[i].text) {
+				const script = scriptOf(ch);
+				if (script) previousScripts[i + 1] = script;
+			}
+		}
+		for (let i = n - 1; i >= 0; i--) {
+			nextScripts[i] = children[i].isSpace
+				? nextScripts[i + 1]
+				: scriptOf(children[i].text.trimStart().charAt(0));
+		}
+	}
+
 	/**
 	 * dp[i] 表示将 index i 到 n-1 的节点进行排版的最小代价
 	 */
@@ -87,7 +110,8 @@ export function calcBalancedBreaks(
 
 	for (let i = n - 1; i >= 0; i--) {
 		for (let j = i + 1; j <= n; j++) {
-			const w = prefixWidth[j] - prefixWidth[i];
+			const w =
+				prefixWidth[j] - prefixWidth[i] - (children[i].leadingSpacing ?? 0);
 
 			let lineCost = 0;
 
@@ -109,12 +133,23 @@ export function calcBalancedBreaks(
 				const prevChild = children[j - 1];
 
 				// 优先级：标点 > 空格 > CJK 词界 > 普通文本
-				if (PUNCTUATION_REGEX.test(prevChild.text)) {
+				if (
+					(isMixed &&
+						prevChild.isSpace &&
+						previousScripts[j] !== 0 &&
+						nextScripts[j] !== 0 &&
+						previousScripts[j] !== nextScripts[j]) ||
+					(PUNCTUATION_REGEX.test(prevChild.text) &&
+						(!isMixed || nextScripts[j] !== 1))
+				) {
 					breakPenalty = -(
 						(containerWidth * PUNCTUATION_BREAK_REWARD_RATIO) **
 						2
 					);
-				} else if (prevChild.isSpace) {
+				} else if (
+					prevChild.isSpace ||
+					(isMixed && PUNCTUATION_REGEX.test(prevChild.text))
+				) {
 					breakPenalty = -((containerWidth * SPACE_BREAK_REWARD_RATIO) ** 2);
 				} else if (cjkBoundaries.has(charOffsets[j])) {
 					breakPenalty = PENALTY_CJK;

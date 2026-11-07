@@ -9,6 +9,20 @@ The extension retains the existing English line-break rule (`#629` is omitted).
 It also keeps the pre-`#632` glow rule: an eligible timed syllable can
 trigger glow on the full word even when the merged text exceeds seven characters.
 
+The local source also includes the one-line cover pause-shrink fix from upstream
+PR #640 (`1df0703bfc86017f115d439bf2a65c702c1a8d18`): paused static covers
+shrink in non-immersive layouts, while immersive covers retain their size.
+
+PR #637 (`8a53ae3e02f0791745b4191038a4e41c6a49f7b0`) is backported to core
+and React for render-only CJK/Latin/digit spacing. The extension's prebuilt
+lyric player explicitly enables it; core and React keep the upstream opt-in
+default. Translation, romanization and ruby annotations remain unchanged.
+PR #639 (`c53ffe15c9785ebf68e45e65375ef19227e7a4c4`) improves balanced line
+breaks for mixed CJK/Latin lyrics. Pure-English punctuation rules and the
+local pre-#632 glow rule are retained.
+The dynamic line balancer reads the main lyric text stored on each word group,
+so ruby and inline romanization do not affect mixed-script break decisions.
+
 Only the `src` directories and package metadata of core (0.6.0), react (0.6.0),
 and react-full (0.5.0) are included, together with the TTML package (1.0.1),
 its upstream fixtures, and its monorepo TypeScript base configuration.

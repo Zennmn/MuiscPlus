@@ -21,6 +21,7 @@ import './player.css';
 
 const COVER_VIDEO_START_TIMEOUT = 12000;
 const COVER_VIDEO_STALL_TIMEOUT = 4500;
+const PLAYER_CURSOR_IDLE_DELAY = 3000;
 
 function coverVideoUrl(value) {
   if (typeof value !== 'string' || value.length > 2048) return null;
@@ -377,6 +378,7 @@ export function createPlayer(host, options = {}) {
   const coverRef = { current: null };
   const collapseButtonRef = { current: null };
   const coverVideoControllerRef = { current: null };
+  const playerRootRef = { current: null };
   const revokeCoverVideo = () => {
     coverVideoControllerRef.current?.disable();
     if (!destroyed) patchView({ coverVideoEnabled: false });
@@ -389,7 +391,34 @@ export function createPlayer(host, options = {}) {
   let presentationFrame = 0;
   let latestPresentationRevision = -1;
   let measuredViewport = '';
+  let playerCursorTimer;
+  let playerCursorDragging = false;
   const presentationViewport = () => innerWidth + 'x' + innerHeight;
+
+  function holdPlayerCursorVisible() {
+    clearTimeout(playerCursorTimer);
+    playerCursorTimer = undefined;
+    playerRootRef.current?.removeAttribute('data-pointer-idle');
+  }
+
+  function resetPlayerCursorIdle() {
+    holdPlayerCursorVisible();
+    const player = playerRootRef.current;
+    if (!player || destroyed || !visible || document.hidden || playerCursorDragging
+      || !store.get(viewAtom).targetExpanded) return;
+    playerCursorTimer = setTimeout(() => {
+      playerCursorTimer = undefined;
+      const currentPlayer = playerRootRef.current;
+      if (destroyed || !visible || document.hidden || playerCursorDragging
+        || !store.get(viewAtom).targetExpanded) return;
+      currentPlayer?.setAttribute('data-pointer-idle', 'true');
+    }, PLAYER_CURSOR_IDLE_DELAY);
+  }
+
+  function stopPlayerCursorIdle() {
+    playerCursorDragging = false;
+    holdPlayerCursorVisible();
+  }
 
   function clearPresentationPreparation() {
     cancelAnimationFrame(presentationFrame);
@@ -417,6 +446,7 @@ export function createPlayer(host, options = {}) {
       diagnostics.finish('collapsed');
       closePanels(false);
       coverVideoControllerRef.current?.disable();
+      stopPlayerCursorIdle();
     }
     flushSync(() => patchView({
       fullMounted: true,
@@ -912,6 +942,24 @@ export function createPlayer(host, options = {}) {
       const timer = setTimeout(() => setRetainedPanel(null), 200);
       return () => clearTimeout(timer);
     }, [panelType, retainedPanel]);
+    useLayoutEffect(() => {
+      const player = playerRootRef.current;
+      if (!player || !view.targetExpanded) return;
+      const isMouse = event => event.pointerType === 'mouse';
+      const activityEvents = ['pointerenter', 'pointermove', 'pointerdown', 'pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave'];
+      const activity = event => {
+        if (!isMouse(event) || (event.type === 'pointerleave' && event.target !== player)) return;
+        playerCursorDragging = event.type !== 'pointerleave' && event.buttons !== 0;
+        if (event.type === 'pointerleave') stopPlayerCursorIdle();
+        else resetPlayerCursorIdle();
+      };
+      for (const type of activityEvents) player.addEventListener(type, activity, true);
+      resetPlayerCursorIdle();
+      return () => {
+        for (const type of activityEvents) player.removeEventListener(type, activity, true);
+        stopPlayerCursorIdle();
+      };
+    }, [view.targetExpanded]);
     useLayoutEffect(() => { options.onReady?.(); }, []);
     useEffect(() => {
       const handlePlaybackKey = event => {
@@ -1010,7 +1058,7 @@ export function createPlayer(host, options = {}) {
     };
     if (['translate', 'both'].includes(view.displayMode)) addSecondaryStatus('translation', view.translating ? 'loading' : displayFeedback.translation);
     if (['romanize', 'both'].includes(view.displayMode)) addSecondaryStatus('romanization', displayFeedback.romanization);
-    const fullPlayer = view.fullMounted && <div className={`lyplus-amll-player${isEmpty ? ' lyplus-amll-no-timed-lyrics' : ''}`}
+    const fullPlayer = view.fullMounted && <div ref={playerRootRef} className={`lyplus-amll-player${isEmpty ? ' lyplus-amll-no-timed-lyrics' : ''}`}
       style={{ '--lyplus-player-font': view.fontFamily || undefined }} data-custom-font={view.fontFamily ? 'true' : undefined}>
       <PrebuiltLyricPlayer
         className="lyplus-amll-layout"
@@ -1192,8 +1240,11 @@ export function createPlayer(host, options = {}) {
     setVisible(value) {
       visible = !!value;
       if (!visible) {
+        stopPlayerCursorIdle();
         diagnostics.finish('hidden');
         invalidatePresentation();
+      } else {
+        resetPlayerCursorIdle();
       }
       store.set(config.isLyricPageOpenedAtom, visible && settledExpanded && !document.hidden);
       applySettings({});
@@ -1205,6 +1256,7 @@ export function createPlayer(host, options = {}) {
     cleanupLyrics() { diagnostics.finish('lyrics-reloading'); store.set(data.musicLyricLinesAtom, []); patchView({ status: 'loading' }); },
     dispose() {
       destroyed = true;
+      stopPlayerCursorIdle();
       clearPresentationPreparation();
       openingArtwork = null;
       window.removeEventListener('resize', onLayoutChange);
