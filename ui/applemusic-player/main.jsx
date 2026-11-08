@@ -376,7 +376,6 @@ export function createPlayer(host, options = {}) {
   let panelTrigger = null;
   let favoriteRequest = 0;
   const coverRef = { current: null };
-  const collapseButtonRef = { current: null };
   const coverVideoControllerRef = { current: null };
   const playerRootRef = { current: null };
   const revokeCoverVideo = () => {
@@ -499,7 +498,7 @@ export function createPlayer(host, options = {}) {
     });
     if (destroyed || latestPresentationRevision !== revision || settledExpanded !== expanded) return true;
     options.onPresentationSettled?.(expanded, revision);
-    if (expanded && document.hasFocus()) collapseButtonRef.current?.focus({ preventScroll: true });
+    if (expanded && document.hasFocus()) playerRootRef.current?.focus({ preventScroll: true });
     return true;
   }
 
@@ -523,7 +522,7 @@ export function createPlayer(host, options = {}) {
     patchView({ menu: false, queueOpen: false, queueLoading: false, queueError: false });
     if (restoreFocus) requestAnimationFrame(() => {
       if (target?.isConnected) target.focus({ preventScroll: true });
-      else if (collapseButtonRef.current?.isConnected) collapseButtonRef.current.focus({ preventScroll: true });
+      else playerRootRef.current?.focus({ preventScroll: true });
     });
   };
   const rememberPanelTrigger = () => {
@@ -967,7 +966,8 @@ export function createPlayer(host, options = {}) {
         const view = store.get(viewAtom);
         if (document.hidden || !store.get(config.isLyricPageOpenedAtom) || !view.connected || view.menu || view.queueOpen) return;
         const target = event.target;
-        if (target?.isContentEditable || target?.closest?.('input, textarea, select, button, a[href], summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="textbox"], [role="combobox"], [role="listbox"], [role="slider"]')) return;
+        // Main player buttons share Space for playback; form controls keep their own keys.
+        if (target?.isContentEditable || target?.closest?.('input, textarea, select, a[href], summary, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="slider"]')) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!event.repeat) command('playPause');
@@ -1058,7 +1058,9 @@ export function createPlayer(host, options = {}) {
     };
     if (['translate', 'both'].includes(view.displayMode)) addSecondaryStatus('translation', view.translating ? 'loading' : displayFeedback.translation);
     if (['romanize', 'both'].includes(view.displayMode)) addSecondaryStatus('romanization', displayFeedback.romanization);
-    const fullPlayer = view.fullMounted && <div ref={playerRootRef} className={`lyplus-amll-player${isEmpty ? ' lyplus-amll-no-timed-lyrics' : ''}`}
+    const fullPlayer = view.fullMounted && <div ref={playerRootRef} tabIndex={-1} className={`lyplus-amll-player${isEmpty ? ' lyplus-amll-no-timed-lyrics' : ''}`}
+      onPointerDownCapture={event => { delete event.currentTarget.dataset.keyboardFocus; }}
+      onKeyDownCapture={event => { if (event.key === 'Tab') event.currentTarget.dataset.keyboardFocus = 'true'; }}
       style={{ '--lyplus-player-font': view.fontFamily || undefined }} data-custom-font={view.fontFamily ? 'true' : undefined}>
       <PrebuiltLyricPlayer
         className="lyplus-amll-layout"
@@ -1078,7 +1080,7 @@ export function createPlayer(host, options = {}) {
             controllerRef={coverVideoControllerRef}
           /> : null,
         }}
-        controlThumbProps={{ buttonRef: collapseButtonRef, buttonLabel: label('playerClose', 'Close') }}
+        controlThumbProps={{ buttonLabel: label('playerClose', 'Close') }}
         onAirPlayClick={() => command('airplay')}
         favoriteButtonSlot={<ToggleIconButton
           className="lyplus-amll-favorite" checked={view.isFavorited === true}
