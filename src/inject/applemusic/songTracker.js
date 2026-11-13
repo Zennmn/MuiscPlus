@@ -343,7 +343,10 @@
         locale = tag.language === 'zh' ? tag.maximize().toString() : tag.toString();
       } catch (_) { }
       // AMDL requests both lyric relationships from the catalog song resource.
-      const query = new URLSearchParams({ l: locale, include: 'lyrics,syllable-lyrics', extend: 'ttmlLocalizations' });
+      // l[script] makes Apple attach the official Latin transliteration track (ja-Latn et al.).
+      const query = new URLSearchParams({
+        l: locale, include: 'lyrics,syllable-lyrics', extend: 'ttmlLocalizations', 'l[script]': 'en-Latn'
+      });
       const headers = { Authorization: `Bearer ${developerToken}`, Accept: 'application/json' };
       if (music.musicUserToken) headers['Music-User-Token'] = music.musicUserToken;
       const account = await getAccountStorefront(headers);
