@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Μετατροπή στίχων σε αυτή τη γραφή για οδηγούς προφοράς (π.χ. Αγγλικά σε Ιαπωνικά Katakana). Οι μη λατινικές γραφές απαιτούν Gemini ή OpenRouter.",
+    "message": "Μετατροπή στίχων σε αυτή τη γραφή για οδηγούς προφοράς (π.χ. Αγγλικά σε Ιαπωνικά Katakana). Οι μη λατινικές γραφές απαιτούν Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Το Google Translate υποστηρίζει μόνο λατινικό (romaji) μεταγραμματισμό. Επιλέξτε Gemini ή OpenRouter ως πάροχο μεταγραμματισμού για να ενεργοποιήσετε άλλες γραφές.",
+    "message": "Το Google Translate υποστηρίζει μόνο λατινικό (romaji) μεταγραμματισμό. Επιλέξτε Gemini / OpenRouter / LLM ως πάροχο μεταγραμματισμού για να ενεργοποιήσετε άλλες γραφές.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Ρυθμίσεις Προηγμένων Εντολών (Gemini / OpenRouter)",
+    "message": "Ρυθμίσεις Προηγμένων Εντολών (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Χρησιμοποιήστε προσαρμοσμένες εντολές για λατινοποίηση Gemini/OpenRouter.",
+    "message": "Χρησιμοποιήστε προσαρμοσμένες εντολές για λατινοποίηση AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

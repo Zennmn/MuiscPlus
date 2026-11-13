@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Badilisha maneno ya wimbo kuwa maandishi haya kwa miongozo ya matamshi (k.m., Kiingereza hadi Kikatakana cha Kijapani). Malengo yasiyo ya Kilatini yanahitaji Gemini au OpenRouter.",
+    "message": "Badilisha maneno ya wimbo kuwa maandishi haya kwa miongozo ya matamshi (k.m., Kiingereza hadi Kikatakana cha Kijapani). Malengo yasiyo ya Kilatini yanahitaji Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate inasaidia unukuzi wa Kilatini (romaji) pekee. Chagua Gemini au OpenRouter kama Mtoa Huduma wa Unukuzi ili kuwezesha maandishi mengine.",
+    "message": "Google Translate inasaidia unukuzi wa Kilatini (romaji) pekee. Chagua Gemini / OpenRouter / LLM kama Mtoa Huduma wa Unukuzi ili kuwezesha maandishi mengine.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Mipangilio ya Maagizo ya Hali ya Juu (Gemini / OpenRouter)",
+    "message": "Mipangilio ya Maagizo ya Hali ya Juu (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Tumia maagizo maalum kwa uandishi wa Kilatini wa Gemini/OpenRouter.",
+    "message": "Tumia maagizo maalum kwa uandishi wa Kilatini wa AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

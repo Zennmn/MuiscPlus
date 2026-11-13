@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "تبدیل متن آهنگ به این خط برای راهنمای تلفظ (مانند تبدیل انگلیسی به کاتاکانای ژاپنی). خطوط غیر لاتین به Gemini یا OpenRouter نیاز دارند.",
+    "message": "تبدیل متن آهنگ به این خط برای راهنمای تلفظ (مانند تبدیل انگلیسی به کاتاکانای ژاپنی). خطوط غیر لاتین به Gemini / OpenRouter / LLM نیاز دارند.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "گوگل ترنسلیت فقط از نویسه‌گردانی لاتین (روماجی) پشتیبانی می‌کند. برای فعال‌سازی سایر خطوط، Gemini یا OpenRouter را به عنوان ارائه‌دهنده نویسه‌گردانی انتخاب کنید.",
+    "message": "گوگل ترنسلیت فقط از نویسه‌گردانی لاتین (روماجی) پشتیبانی می‌کند. برای فعال‌سازی سایر خطوط، Gemini / OpenRouter / LLM را به عنوان ارائه‌دهنده نویسه‌گردانی انتخاب کنید.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "تنظیمات پیشرفته Prompt (Gemini / OpenRouter)",
+    "message": "تنظیمات پیشرفته Prompt (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "از پرامپت‌های سفارشی برای رومی‌سازی Gemini/OpenRouter استفاده کنید.",
+    "message": "از پرامپت‌های سفارشی برای رومی‌سازی AI استفاده کنید.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

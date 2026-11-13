@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Ubah lirik ke dalam aksara ini untuk panduan pelafalan (misalnya, Bahasa Inggris ke Katakana Jepang). Target non-Latin memerlukan Gemini atau OpenRouter.",
+    "message": "Ubah lirik ke dalam aksara ini untuk panduan pelafalan (misalnya, Bahasa Inggris ke Katakana Jepang). Target non-Latin memerlukan Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate hanya mendukung transliterasi Latin (romaji). Pilih Gemini atau OpenRouter sebagai Penyedia Transliterasi untuk mengaktifkan aksara lain.",
+    "message": "Google Translate hanya mendukung transliterasi Latin (romaji). Pilih Gemini / OpenRouter / LLM sebagai Penyedia Transliterasi untuk mengaktifkan aksara lain.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Prompting Lanjutan (Gemini / OpenRouter)",
+    "message": "Prompting Lanjutan (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Label sakelar"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Gunakan prompt kustom untuk romanisasi Gemini/OpenRouter.",
+    "message": "Gunakan prompt kustom untuk romanisasi AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

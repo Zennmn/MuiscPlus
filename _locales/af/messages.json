@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Skakel lirieke om na hierdie skrif vir uitspraakgidse (bv. Engels na Japannese Katakana). Nie-Latynse teikens vereis Gemini of OpenRouter.",
+    "message": "Skakel lirieke om na hierdie skrif vir uitspraakgidse (bv. Engels na Japannese Katakana). Nie-Latynse teikens vereis Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate ondersteun slegs Latynse (romaji) transliterasie. Kies Gemini of OpenRouter as die transliterasieverskaffer om ander skrifte te aktiveer.",
+    "message": "Google Translate ondersteun slegs Latynse (romaji) transliterasie. Kies Gemini / OpenRouter / LLM as die transliterasieverskaffer om ander skrifte te aktiveer.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Gevorderde instruksie-instellings (Gemini / OpenRouter)",
+    "message": "Gevorderde instruksie-instellings (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Gebruik gepasmaakte instruksies vir Gemini/OpenRouter romanisering.",
+    "message": "Gebruik gepasmaakte instruksies vir AI romanisering.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

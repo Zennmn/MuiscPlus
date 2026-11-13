@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Chuyển lời bài hát sang chữ viết này để hướng dẫn phát âm (ví dụ: tiếng Anh sang Katakana tiếng Nhật). Chữ viết phi Latinh yêu cầu Gemini hoặc OpenRouter.",
+    "message": "Chuyển lời bài hát sang chữ viết này để hướng dẫn phát âm (ví dụ: tiếng Anh sang Katakana tiếng Nhật). Chữ viết phi Latinh yêu cầu Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Dịch chỉ hỗ trợ chuyển tự chữ Latinh (romaji). Chọn Gemini hoặc OpenRouter làm Nhà cung cấp chuyển tự để bật các hệ chữ khác.",
+    "message": "Google Dịch chỉ hỗ trợ chuyển tự chữ Latinh (romaji). Chọn Gemini / OpenRouter / LLM làm Nhà cung cấp chuyển tự để bật các hệ chữ khác.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Cài đặt Prompt nâng cao (Gemini / OpenRouter)",
+    "message": "Cài đặt Prompt nâng cao (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Sử dụng prompt tùy chỉnh để phiên âm Gemini/OpenRouter.",
+    "message": "Sử dụng prompt tùy chỉnh để phiên âm AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

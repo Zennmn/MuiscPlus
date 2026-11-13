@@ -256,7 +256,7 @@
     "message": "思考模式"
   },
   "descLLMThinkingMode": {
-    "message": "仅适用于 DeepSeek 兼容接口和支持思考开关的 OpenRouter 模型，开启后可能增加翻译耗时。"
+    "message": "仅适用于 DeepSeek 兼容接口和支持思考开关的 OpenRouter 模型，开启后可能增加响应时间。"
   },
   "labelLLMThinkingEffort": {
     "message": "思考强度"
@@ -322,11 +322,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "将歌词转换为所选文字系统，作为发音辅助（例如将英文转为日文片假名）。非拉丁文字需要 Gemini 或 OpenRouter。",
+    "message": "将歌词转换为所选文字系统，作为发音辅助（例如将英文转为日文片假名）。非拉丁文字需要 Gemini / OpenRouter / 第三方 LLM。",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google 翻译仅支持拉丁字母（罗马字）音译。若要使用其他文字，请选择 Gemini 或 OpenRouter 作为音译服务。",
+    "message": "Google 翻译仅支持拉丁字母（罗马字）音译。若要使用其他文字，请选择 Gemini / OpenRouter / 第三方 LLM 作为音译服务。",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -402,7 +402,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "高级提示词设置 (Gemini / OpenRouter)",
+    "message": "高级提示词设置 (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -426,7 +426,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "针对 Gemini/OpenRouter 注音/拼音使用自定义提示词。",
+    "message": "针对 AI 音译使用自定义提示词。",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

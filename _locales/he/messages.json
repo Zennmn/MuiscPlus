@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "המרת מילות השיר לכתב זה כמדריך הגייה (למשל, מאנגלית לקטאקאנה יפנית). יעדים שאינם לטיניים דורשים את Gemini או OpenRouter.",
+    "message": "המרת מילות השיר לכתב זה כמדריך הגייה (למשל, מאנגלית לקטאקאנה יפנית). יעדים שאינם לטיניים דורשים את Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate תומך בתעתיק לטיני (רומאג'י) בלבד. בחר ב-Gemini או ב-OpenRouter כספק תעתיק כדי לאפשר כתבים אחרים.",
+    "message": "Google Translate תומך בתעתיק לטיני (רומאג'י) בלבד. בחר ב-Gemini / OpenRouter / LLM כספק תעתיק כדי לאפשר כתבים אחרים.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "הגדרות הנחיות מתקדמות (Gemini / OpenRouter)",
+    "message": "הגדרות הנחיות מתקדמות (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "השתמש בהנחיות מותאמות אישית לרומניזציה של Gemini/OpenRouter.",
+    "message": "השתמש בהנחיות מותאמות אישית לרומניזציה של AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

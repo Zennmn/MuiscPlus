@@ -57,6 +57,7 @@ private val RomanizationProviderChoices = listOf(
     LocalizedChoice("google", "optionGoogleTranslate", "Google Translate"),
     LocalizedChoice("gemini", "optionGeminiAI", "Gemini AI"),
     LocalizedChoice("openrouter", "optionOpenRouter", "OpenRouter (LLM)"),
+    LocalizedChoice("customllm", "optionCustomLLM", "Third-party LLM (Chat Completions)"),
 )
 private val RomanizationProviderCodes = RomanizationProviderChoices.map { it.value }.toSet()
 
@@ -126,7 +127,7 @@ private val GeminiRomanizationModelOptions = listOf(
 private val GeminiRomanizationModelCodes = GeminiRomanizationModelOptions.map { it.value }.toSet()
 
 private val DeepLProviders = setOf("deepl", "deepl-keyless")
-private val AIScriptProviders = setOf("gemini", "openrouter")
+private val AIScriptProviders = setOf("gemini", "openrouter", "customllm")
 private val DeepLSupportedCodes = setOf(
     "ace", "af", "sq", "ar", "an", "hy", "as", "ay", "az", "ba", "eu", "be", "bn", "bho", "bs", "br",
     "bg", "my", "yue", "ca", "ceb", "zh-CN", "zh-TW", "hr", "cs", "da", "fa-AF", "nl", "en",
@@ -461,13 +462,14 @@ fun TranslationSection(
     val translationOpenRouter = translationProvider == "openrouter"
     val translationCustomLLM = translationProvider == "customllm"
     val translationAI = translationGemini || translationOpenRouter
-    val translationLLM = translationOpenRouter || translationCustomLLM
     val romanizationGemini = romanizationProvider == "gemini"
     val romanizationOpenRouter = romanizationProvider == "openrouter"
-    val romanizationAI = romanizationGemini || romanizationOpenRouter
+    val romanizationCustomLLM = romanizationProvider == "customllm"
+    val romanizationScriptAI = romanizationProvider in AIScriptProviders
+    val customLLMSettings = translationCustomLLM || romanizationCustomLLM
     val offlineRomanization = romanizationProvider == "offline"
     val isDeepL = translationProvider in DeepLProviders
-    val thinkingDisabled = translationCustomLLM && thinkingFormat == "none"
+    val thinkingDisabled = customLLMSettings && thinkingFormat == "none" && !translationOpenRouter
 
     val translationProviderOptions = localizedOptions(TranslationProviderChoices, tr)
     val romanizationProviderOptions = localizedOptions(RomanizationProviderChoices, tr)
@@ -486,7 +488,7 @@ fun TranslationSection(
         }
     }
     LaunchedEffect(romanizationProvider, transliterationTarget) {
-        if (!romanizationAI && transliterationTarget != "latin") {
+        if (!romanizationScriptAI && transliterationTarget != "latin") {
             transliterationTargetState.value = "latin"
             actions.set("transliterationTargetScript", "latin")
         }
@@ -585,9 +587,9 @@ fun TranslationSection(
             }
         }
 
-        if (translationLLM) {
+        if (translationOpenRouter || customLLMSettings) {
             Card(modifier = Modifier.fillMaxWidth()) {
-                if (translationCustomLLM) {
+                if (customLLMSettings) {
                     ChoiceDropdown(
                         title = tr("labelLLMThinkingFormat", "Thinking parameter format"),
                         summary = tr(
@@ -606,7 +608,7 @@ fun TranslationSection(
                     title = tr("labelLLMThinkingMode", "Thinking mode"),
                     summary = tr(
                         "descLLMThinkingMode",
-                        "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time.",
+                        "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time.",
                     ),
                     checked = thinkingEnabled.value,
                     enabled = !thinkingDisabled,
@@ -667,7 +669,7 @@ fun TranslationSection(
             }
         }
 
-        if (translationCustomLLM) {
+        if (customLLMSettings) {
             Text(
                 tr("categoryCustomLLM", "Third-party LLM"),
                 style = MiuixTheme.textStyles.title3,
@@ -790,21 +792,21 @@ fun TranslationSection(
                 title = tr("labelTransliterationTarget", "Target writing system"),
                 summary = tr(
                     "descTransliterationTarget",
-                    "Convert lyrics to the selected writing system as a pronunciation aid (for example, English to Japanese Katakana). Non-Latin scripts require Gemini or OpenRouter.",
+                    "Convert lyrics to the selected writing system as a pronunciation aid (for example, English to Japanese Katakana). Non-Latin scripts require Gemini, OpenRouter, or a third-party LLM.",
                 ),
                 options = transliterationTargetOptions,
                 selectedValue = transliterationTarget,
-                enabled = romanizationAI,
+                enabled = romanizationScriptAI,
                 onSelectedValueChange = {
                     transliterationTargetState.value = it
                     actions.set("transliterationTargetScript", it)
                 },
             )
-            if (!romanizationAI) {
+            if (!romanizationScriptAI) {
                 Text(
                     tr(
                         "noteTransliterationTargetDisabled",
-                        "Google Translate supports only Latin (romaji) transliteration. Choose Gemini or OpenRouter as the transliteration provider to use other scripts.",
+                        "Google Translate supports only Latin (romaji) transliteration. Choose Gemini, OpenRouter, or a third-party LLM as the transliteration provider to use other scripts.",
                     ),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     style = MiuixTheme.textStyles.footnote1,
@@ -846,9 +848,9 @@ fun TranslationSection(
             }
         }
 
-        if (translationAI || romanizationAI) {
+        if (translationAI || romanizationScriptAI) {
             Text(
-                tr("categoryAdvancedPrompting", "Advanced Prompting (Gemini / OpenRouter)"),
+                tr("categoryAdvancedPrompting", "Advanced Prompting (AI)"),
                 style = MiuixTheme.textStyles.title3,
             )
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -885,7 +887,7 @@ fun TranslationSection(
                         )
                     }
                 }
-                if (romanizationAI) {
+                if (romanizationScriptAI) {
                     SwitchPreference(
                         title = tr(
                             "settingOverrideRomanizePrompt",
@@ -893,7 +895,7 @@ fun TranslationSection(
                         ),
                         summary = tr(
                             "descOverrideRomanizePrompt",
-                            "Use a custom prompt for Gemini/OpenRouter romanization.",
+                            "Use a custom prompt for AI romanization.",
                         ),
                         checked = overrideRomanizationPrompt.value,
                         onCheckedChange = {

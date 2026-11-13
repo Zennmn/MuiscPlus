@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "उच्चारण मार्गदर्शिका के लिए बोल को इस लिपि में बदलें (उदा. अंग्रेजी से जापानी काताकाना)। गैर-लैटिन लिपियों के लिए Gemini या OpenRouter आवश्यक है।",
+    "message": "उच्चारण मार्गदर्शिका के लिए बोल को इस लिपि में बदलें (उदा. अंग्रेजी से जापानी काताकाना)। गैर-लैटिन लिपियों के लिए Gemini / OpenRouter / LLM आवश्यक है।",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate केवल लैटिन (रोमाजी) लिप्यंतरण का समर्थन करता है। अन्य लिपियों को सक्षम करने के लिए लिप्यंतरण प्रदाता के रूप में Gemini या OpenRouter चुनें।",
+    "message": "Google Translate केवल लैटिन (रोमाजी) लिप्यंतरण का समर्थन करता है। अन्य लिपियों को सक्षम करने के लिए लिप्यंतरण प्रदाता के रूप में Gemini / OpenRouter / LLM चुनें।",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "उन्नत प्रॉम्प्ट सेटिंग्स (Gemini / OpenRouter)",
+    "message": "उन्नत प्रॉम्प्ट सेटिंग्स (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Gemini/OpenRouter लिप्यंतरण के लिए कस्टम प्रॉम्प्ट का उपयोग करें।",
+    "message": "AI लिप्यंतरण के लिए कस्टम प्रॉम्प्ट का उपयोग करें।",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

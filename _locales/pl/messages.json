@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Konwertuj tekst piosenki na to pismo jako wskazówkę wymowy (np. z angielskiego na japońską katakanę). Pisma nielacińskie wymagają Gemini lub OpenRouter.",
+    "message": "Konwertuj tekst piosenki na to pismo jako wskazówkę wymowy (np. z angielskiego na japońską katakanę). Pisma nielacińskie wymagają Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate obsługuje tylko transliterację łacińską (romaji). Wybierz Gemini lub OpenRouter jako dostawcę transliteracji, aby włączyć inne pisma.",
+    "message": "Google Translate obsługuje tylko transliterację łacińską (romaji). Wybierz Gemini / OpenRouter / LLM jako dostawcę transliteracji, aby włączyć inne pisma.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Zaawansowane ustawienia promptów (Gemini / OpenRouter)",
+    "message": "Zaawansowane ustawienia promptów (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Użyj niestandardowych promptów dla romanizacji Gemini/OpenRouter.",
+    "message": "Użyj niestandardowych promptów dla romanizacji AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

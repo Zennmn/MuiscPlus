@@ -19,7 +19,9 @@ import { OfflineRomanizationProvider } from '../services/translation/providers/O
 import { CustomLLMProvider, buildLLMThinkingParameters } from '../services/translation/providers/CustomLLMProvider.js';
 
 export class TranslationService {
-  static cacheSchemaVersion = 4;
+  // Bumped for the per-unit romanization contract: older cached readings were
+  // free-text aligned and must not be reused.
+  static cacheSchemaVersion = 5;
   static cacheEpoch = 0;
   static cacheMutationQueue = Promise.resolve();
 
@@ -42,19 +44,23 @@ export class TranslationService {
 
   static cacheDimensions(settings = {}, action) {
     const translation = action === 'translate';
+    const selectedProvider = translation ? settings.translationProvider : settings.romanizationProvider;
+    const usesCustomLLM = selectedProvider === 'customllm';
+    const usesLLMThinking = usesCustomLLM || selectedProvider === PROVIDERS.OPENROUTER;
+    const includesCustomLLM = translation || usesCustomLLM;
     return {
       schema: this.cacheSchemaVersion,
       action,
-      provider: translation ? settings.translationProvider : settings.romanizationProvider,
+      provider: selectedProvider,
       translationModel: settings.geminiModel,
       romanizationModel: settings.geminiRomanizationModel,
       openRouterModel: settings.openRouterModel,
-      customLLMBaseUrl: translation ? settings.customLLMBaseUrl : '',
-      customLLMModel: translation ? settings.customLLMModel : '',
-      ...(translation && ['customllm', 'openrouter'].includes(settings.translationProvider)
+      customLLMBaseUrl: includesCustomLLM ? settings.customLLMBaseUrl : '',
+      customLLMModel: includesCustomLLM ? settings.customLLMModel : '',
+      ...(usesLLMThinking
         ? {
           llmThinkingParameters: buildLLMThinkingParameters(
-            settings, settings.translationProvider === 'openrouter' ? 'openrouter' : undefined
+            settings, selectedProvider === PROVIDERS.OPENROUTER ? 'openrouter' : undefined
           )
         }
         : {}),
@@ -65,7 +71,7 @@ export class TranslationService {
       geminiCredential: !!settings.geminiApiKey,
       openRouterCredential: !!settings.openRouterApiKey,
       deeplCredential: !!settings.deeplApiKey,
-      customCredential: !!(translation && settings.customLLMApiKey)
+      customCredential: !!(includesCustomLLM && settings.customLLMApiKey)
     };
   }
 
@@ -288,8 +294,9 @@ export class TranslationService {
    * Builds the ordered list of providers to try for romanization/transliteration.
    * For Latin targets it preserves the legacy behavior: the chosen provider first,
    * falling back to Google. For non-Latin target scripts Google is skipped entirely
-   * (it cannot transliterate into other scripts), so Gemini/OpenRouter are used
-   * when API keys are available.
+   * (it cannot transliterate into other scripts), so the selected AI provider is
+   * tried first, then Gemini/OpenRouter when their API keys are available. A
+   * selected custom LLM is used regardless of whether its API key is empty.
    */
   static resolveRomanizationProviders(settings, targetScript) {
     const candidates = [];
@@ -298,7 +305,9 @@ export class TranslationService {
     };
 
     const selected = settings.romanizationProvider || PROVIDERS.OFFLINE;
-    const isAiProvider = selected === PROVIDERS.GEMINI || selected === PROVIDERS.OPENROUTER;
+    const isAiProvider = selected === 'customllm'
+      || selected === PROVIDERS.GEMINI
+      || selected === PROVIDERS.OPENROUTER;
 
     if (targetScript && targetScript !== 'latin') {
       if (isAiProvider) push(selected);
@@ -348,7 +357,7 @@ export class TranslationService {
     if (lastError) throw lastError;
     throw new Error(
       targetScript !== 'latin'
-        ? `Transliteration into "${targetScript}" script requires Gemini or OpenRouter. Please set an API key in the settings.`
+        ? `Transliteration into "${targetScript}" script requires an AI provider (Gemini, OpenRouter, or a third-party LLM). Configure it in the settings.`
         : 'Romanization failed: no provider available.'
     );
   }

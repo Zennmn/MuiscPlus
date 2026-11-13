@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Converte il testo in questo sistema di scrittura come guida alla pronuncia (es. dall'inglese al katakana giapponese). Le scritture non latine richiedono Gemini o OpenRouter.",
+    "message": "Converte il testo in questo sistema di scrittura come guida alla pronuncia (es. dall'inglese al katakana giapponese). Le scritture non latine richiedono Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate supporta solo la traslitterazione in caratteri latini (romaji). Seleziona Gemini o OpenRouter come provider di traslitterazione per abilitare altre scritture.",
+    "message": "Google Translate supporta solo la traslitterazione in caratteri latini (romaji). Seleziona Gemini / OpenRouter / LLM come provider di traslitterazione per abilitare altre scritture.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Impostazioni Prompt avanzate (Gemini / OpenRouter)",
+    "message": "Impostazioni Prompt avanzate (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Usa prompt personalizzati per la romanizzazione Gemini/OpenRouter.",
+    "message": "Usa prompt personalizzati per la romanizzazione AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

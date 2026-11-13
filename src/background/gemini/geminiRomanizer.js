@@ -3,15 +3,32 @@ import { Utilities } from '../utils/utilities.js';
 import { createRomanizationPrompt } from '../services/translation/prompts.js';
 import { SchemaBuilder } from './schemaBuilder.js';
 import { GoogleService } from '../services/googleService.js';
+import {
+  prepareUnitLines,
+  createUnitSchema,
+  createUnitPrompt,
+  createUnitRepairPrompt,
+  parseUnitAnswer,
+  isUnitAnswerValid,
+  applyUnitReadings,
+} from './unitRomanization.js';
 
 export class GeminiRomanizer {
-  constructor(settings) {
+  constructor(settings, { requestContent, providerName = 'Gemini' } = {}) {
     this.settings = settings;
+    this.requestContent = requestContent;
+    this.providerName = providerName;
     this.modelName = settings.geminiRomanizationModel;
     this.url = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${settings.geminiApiKey}`;
   }
 
   async romanize(structuredInput, songInfo = {}, targetLang, targetScript = 'latin') {
+    // Latin output follows the per-unit contract: one reading string per timed
+    // unit, so no free-text alignment step is needed.
+    if (targetScript === 'latin') {
+      return this.romanizeUnits(structuredInput, songInfo, targetScript);
+    }
+
     const { lyricsForApi, reconstructionPlan } = this.prepareLyrics(structuredInput, targetScript);
     const hasAnyChunks = lyricsForApi.some(line => line.chunk && line.chunk.length > 0);
 
@@ -31,7 +48,7 @@ export class GeminiRomanizer {
 
     let lastBrokenIndices = [];
 
-    // Call Gemini API (up to 3 turns to repair missing/unromanized lines)
+    // Ask the provider up to 3 times to repair missing/unromanized lines.
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         responseText = await this.callGeminiAPI(contents, schema);
@@ -90,12 +107,12 @@ export class GeminiRomanizer {
         lastBrokenIndices = brokenLineIndices;
 
         if (brokenLineIndices.length === 0) {
-          console.log(`Gemini romanization completed successfully on attempt ${attempt}`);
+          console.log(`${this.providerName} romanization completed successfully on attempt ${attempt}`);
           break;
         }
 
         if (attempt < maxAttempts) {
-          console.warn(`Gemini romanization attempt ${attempt}: ${brokenLineIndices.length} broken/missing line(s) [indices: ${brokenLineIndices.join(', ')}]. Sending targeted repair user prompt.`);
+          console.warn(`${this.providerName} romanization attempt ${attempt}: ${brokenLineIndices.length} broken/missing line(s) [indices: ${brokenLineIndices.join(', ')}]. Sending targeted repair user prompt.`);
 
           const brokenLinesForApi = brokenLineIndices.map(idx => lyricsForApi[idx]);
 
@@ -105,7 +122,7 @@ export class GeminiRomanizer {
             parts: [{
               text: `Your previous response was missing, incomplete, or contained text that was not fully transliterated into the target script for line index(es): [${brokenLineIndices.join(', ')}].
 
-Please fix and return ONLY the transliteration for these broken line(s) below in a valid JSON array:
+Please fix and return ONLY the transliteration for these broken line(s) below as {"romanized_lyrics": [the corrected line objects]}:
 
 ${JSON.stringify(brokenLinesForApi, null, 2)}
 
@@ -116,11 +133,11 @@ Requirements:
             }]
           });
         } else {
-          console.warn(`Gemini romanization reached max attempts (${maxAttempts}). Proceeding with best-effort results for remaining ${brokenLineIndices.length} line(s).`);
+          console.warn(`${this.providerName} romanization reached max attempts (${maxAttempts}). Proceeding with best-effort results for remaining ${brokenLineIndices.length} line(s).`);
         }
 
       } catch (e) {
-        console.warn(`Gemini API call attempt ${attempt} failed:`, e.message);
+        console.warn(`${this.providerName} API call attempt ${attempt} failed:`, e.message);
         lastError = e;
         if (attempt === maxAttempts && validResultsMap.size === 0) {
           throw e;
@@ -128,8 +145,8 @@ Requirements:
       }
     }
 
-    if (validResultsMap.size === 0 && lastError) {
-      throw new Error(`Gemini romanization failed: ${lastError.message}`);
+    if (validResultsMap.size === 0) {
+      throw new Error(`${this.providerName} romanization failed: ${lastError?.message || 'No valid transliterated lines were returned.'}`);
     }
 
     // Align each line using GoogleService.alignRomanizationAnchors directly
@@ -182,6 +199,83 @@ Requirements:
     return this.reconstructLyrics(alignedApiLyrics, reconstructionPlan, hasAnyChunks);
   }
 
+  /**
+   * Per-unit romanization following the ttml-transliterate contract: the model
+   * returns exactly one reading per timed unit, so no free-text alignment runs.
+   * Latin units are copied verbatim and standalone non-Latin punctuation becomes
+   * a single U+200B, both filled locally.
+   */
+  async romanizeUnits(structuredInput, songInfo = {}, targetScript = 'latin') {
+    const { lines, chunked, plan } = prepareUnitLines(structuredInput, targetScript);
+    const results = new Map();
+
+    if (lines.length > 0) {
+      const schema = createUnitSchema();
+      const customPrompt = this.settings.overrideGeminiRomanizePrompt
+        ? this.settings.customGeminiRomanizePrompt : '';
+      const contents = [{ role: 'user', parts: [{ text: createUnitPrompt(lines, songInfo, customPrompt) }] }];
+      const maxAttempts = 3;
+      let lastError = null;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        let parsed = null;
+        try {
+          const responseText = await this.callGeminiAPI(contents, schema);
+          parsed = JSON.parse(this.cleanJsonOutput(responseText));
+        } catch (error) {
+          lastError = error;
+          if (attempt === maxAttempts && results.size === 0) throw error;
+          console.warn(this.providerName + ' unit romanization attempt ' + attempt + ' failed:', error.message);
+          continue;
+        }
+
+        for (const { index, readings } of parseUnitAnswer(parsed, lines.length)) {
+          if (!results.has(index) && isUnitAnswerValid(lines[index], readings)) {
+            results.set(index, readings);
+          }
+        }
+
+        const broken = lines.map((_, index) => index).filter(index => !results.has(index));
+        if (broken.length === 0) {
+          console.log(this.providerName + ' unit romanization completed on attempt ' + attempt);
+          break;
+        }
+        if (attempt === maxAttempts) {
+          console.warn(this.providerName + ' unit romanization left ' + broken.length + ' line(s) unread.');
+          break;
+        }
+
+        console.warn(this.providerName + ' unit romanization attempt ' + attempt + ': repairing ' + broken.length + ' line(s).');
+        contents.push({ role: 'model', parts: [{ text: JSON.stringify(parsed) }] });
+        contents.push({ role: 'user', parts: [{ text: createUnitRepairPrompt(lines, broken) }] });
+      }
+
+      if (results.size === 0) {
+        throw new Error(this.providerName + ' romanization failed: '
+          + (lastError?.message || 'No valid unit readings were returned.'));
+      }
+    }
+
+    return plan.map(({ type, data, apiIndex, originalIndex }) => {
+      if (type === 'verbatim') {
+        return {
+          text: data.text,
+          ...(data.chunk ? { chunk: data.chunk.map(chunk => ({ text: chunk.text })) } : {}),
+          original_line_index: originalIndex,
+        };
+      }
+
+      const units = lines[apiIndex];
+      const readings = applyUnitReadings(units, results.get(apiIndex) || []);
+      const result = {
+        text: readings.join(''),
+        original_line_index: originalIndex,
+      };
+      if (chunked[apiIndex]) result.chunk = readings.map(text => ({ text }));
+      return result;
+    });
+  }
+
   isLineValid(origLine, retLine, targetScript = 'latin') {
     if (!retLine || typeof retLine !== 'object') return false;
 
@@ -223,6 +317,8 @@ Requirements:
   }
 
   async callGeminiAPI(contents, schema) {
+    if (this.requestContent) return this.requestContent(contents, schema);
+
     const isGemma = this.modelName.toLowerCase().includes("gemma");
 
     const generationConfig = {
@@ -264,6 +360,7 @@ Requirements:
   cleanJsonOutput(text) {
     if (!text) return "";
     return text
+      .trim()
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
       .replace(/\s*```$/, "");
@@ -342,7 +439,8 @@ Requirements:
       const songContext = (songInfo.title && songInfo.artist)
         ? `\n# SONG CONTEXT\n- Title: ${songInfo.title}\n- Artist: ${songInfo.artist}\n`
         : '';
-      return songContext + customGeminiRomanizePrompt;
+      return songContext + customGeminiRomanizePrompt
+        + `\n\n# TARGET SCRIPT\n${targetScript}\n\n# INPUT DATA TO TRANSLITERATE\n${JSON.stringify(lyricsForApi, null, 2)}`;
     }
 
     return createRomanizationPrompt(lyricsForApi, hasAnyChunks, songInfo, targetLang, targetScript);
