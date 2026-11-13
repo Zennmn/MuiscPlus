@@ -14,7 +14,7 @@ globalThis.LYPLUS_DEFAULT_SETTINGS = Object.freeze({
     wordByWord: true,
     lightweight: false,
     largerTextMode: 'lyrics',
-    hidePhoneticDup: false,
+    hidePhoneticDup: true,
     cacheStrategy: 'bounded',
     translationProvider: 'google',
     romanizationProvider: 'offline',

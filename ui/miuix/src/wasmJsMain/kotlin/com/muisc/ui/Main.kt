@@ -43,7 +43,7 @@ fun main() {
                         appleMusicTitleCorrection = state.value("appleMusicTitleCorrection", "off"),
                         largerTextMode = state.value("largerTextMode", "lyrics"),
                         wordByWord = state.enabled("wordByWord", true),
-                        hidePhoneticDup = state.enabled("hidePhoneticDup"),
+                        hidePhoneticDup = state.enabled("hidePhoneticDup", true),
                         lightweight = state.enabled("lightweight"),
                         cacheSize = state.cacheStats["sizeMB"] ?: "0.00 MB",
                         cacheCount = state.cacheStats["cacheCount"] ?: "0",

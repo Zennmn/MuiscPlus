@@ -48,7 +48,7 @@ data class PopupState(
     val appleMusicTitleCorrection: String = "off",
     val largerTextMode: String = "lyrics",
     val wordByWord: Boolean = true,
-    val hidePhoneticDup: Boolean = false,
+    val hidePhoneticDup: Boolean = true,
     val lightweight: Boolean = false,
     val cacheSize: String = "0.00 MB",
     val cacheCount: String = "0",

@@ -8,6 +8,9 @@ snapshot of the user's local `applemusic-like-lyrics` checkout.
 The extension retains the existing English line-break rule (`#629` is omitted).
 It also keeps the pre-`#632` glow rule: an eligible timed syllable can
 trigger glow on the full word even when the merged text exceeds seven characters.
+A word that keeps its romanization is not split into single CJK characters, so
+the glow check divides its span by its character count instead of using the
+whole-word span. Lyrics without romanization are unaffected.
 
 The local source also includes the one-line cover pause-shrink fix from upstream
 PR #640 (`1df0703bfc86017f115d439bf2a65c702c1a8d18`): paused static covers
