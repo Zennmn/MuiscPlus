@@ -425,8 +425,22 @@ export class LyricLineEl extends LyricLineBase {
 			} as LyricWord,
 		);
 
+		// 带音译的 CJK 词不会在 chunkAndSplitLyricWords 里拆成单字，
+		// 整词时长会虚高并误触发辉光；此时按单字平均时长还原判定。
+		const shouldEmphasize = (word: LyricWord) => {
+			const text = word.word.trim();
+			if (
+				text.length > 1 &&
+				isCJK(text) &&
+				(word.romanWord?.trim().length ?? 0) > 0
+			) {
+				return (word.endTime - word.startTime) / text.length >= 1000;
+			}
+			return LyricLineBase.shouldEmphasize(word);
+		};
+
 		const emp =
-			chunk.some((word) => LyricLineBase.shouldEmphasize(word)) ||
+			chunk.some(shouldEmphasize) ||
 			(!isCJK(merged.word) && LyricLineBase.shouldEmphasize(merged));
 
 		const wrapperWordEl = document.createElement("span");

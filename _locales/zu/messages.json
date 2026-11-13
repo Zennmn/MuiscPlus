@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Guqula amagama engoma abe kulo mbhalo ukuze uthole imihlahlandlela yokuphimisa (isb. IsiNgisi siye kusi-Japanese Katakana). Okuqondiwe okungewona owesi-Latin kudinga i-Gemini noma i-OpenRouter.",
+    "message": "Guqula amagama engoma abe kulo mbhalo ukuze uthole imihlahlandlela yokuphimisa (isb. IsiNgisi siye kusi-Japanese Katakana). Okuqondiwe okungewona owesi-Latin kudinga i-Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "I-Google Translate isekela kuphela ukuhumusha ngomsindo kwesi-Latin (romaji). Khetha i-Gemini noma i-OpenRouter njengomhlinzeki wokuhumusha ngomsindo ukuze unike amandla eminye imibhalo.",
+    "message": "I-Google Translate isekela kuphela ukuhumusha ngomsindo kwesi-Latin (romaji). Khetha i-Gemini / OpenRouter / LLM njengomhlinzeki wokuhumusha ngomsindo ukuze unike amandla eminye imibhalo.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Izilungiselelo Zemiyalo Ethuthukisiwe (Gemini / OpenRouter)",
+    "message": "Izilungiselelo Zemiyalo Ethuthukisiwe (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Sebenzisa imiyalo ngokwezifiso ngezinhlamvu zesi-Latin ze-Gemini/OpenRouter.",
+    "message": "Sebenzisa imiyalo ngokwezifiso ngezinhlamvu zesi-Latin ze-AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Converte as letras para este alfabeto para guias de pronúncia (ex.: inglês para katakana japonês). Destinos não latinos requerem Gemini ou OpenRouter.",
+    "message": "Converte as letras para este alfabeto para guias de pronúncia (ex.: inglês para katakana japonês). Destinos não latinos requerem Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "O Google Tradutor suporta apenas transliteração latina (romaji). Selecione Gemini ou OpenRouter como provedor para ativar outros alfabetos.",
+    "message": "O Google Tradutor suporta apenas transliteração latina (romaji). Selecione Gemini / OpenRouter / LLM como provedor para ativar outros alfabetos.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Configurações avançadas de prompt (Gemini / OpenRouter)",
+    "message": "Configurações avançadas de prompt (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Use prompts personalizados para romanização no Gemini/OpenRouter.",
+    "message": "Use prompts personalizados para romanização no AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

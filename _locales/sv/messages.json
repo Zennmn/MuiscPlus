@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Konvertera sångtexter till detta skriftsystem för uttalsguider (t.ex. engelska till japansk katakana). Icke-latinska mål kräver Gemini eller OpenRouter.",
+    "message": "Konvertera sångtexter till detta skriftsystem för uttalsguider (t.ex. engelska till japansk katakana). Icke-latinska mål kräver Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate stöder endast latinsk (romaji) translitterering. Välj Gemini eller OpenRouter som translittereringsleverantör för att aktivera andra skriftsystem.",
+    "message": "Google Translate stöder endast latinsk (romaji) translitterering. Välj Gemini / OpenRouter / LLM som translittereringsleverantör för att aktivera andra skriftsystem.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Avancerade promptinställningar (Gemini / OpenRouter)",
+    "message": "Avancerade promptinställningar (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Använd anpassade prompter för Gemini/OpenRouter-romanisering.",
+    "message": "Använd anpassade prompter för AI-romanisering.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

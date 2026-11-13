@@ -3,6 +3,8 @@ import { TranslationProvider } from '../TranslationProvider.js';
 import { createTranslationPrompt, createRomanizationPrompt } from '../prompts.js';
 import { Utilities } from '../../../utils/utilities.js';
 import { buildLLMThinkingParameters } from './CustomLLMProvider.js';
+import { GeminiRomanizer } from '../../../gemini/geminiRomanizer.js';
+import { GeminiService } from '../../../gemini/geminiService.js';
 
 export class OpenRouterProvider extends TranslationProvider {
     constructor(settings) {
@@ -70,6 +72,18 @@ Do not wrap in Markdown code blocks. Just the raw JSON string.`;
     async romanize(originalLyrics, targetLang, songInfo = {}, targetScript = 'latin') {
         if (!this.apiKey) {
             throw new Error('OpenRouter API Key is missing. Please set it in Settings.');
+        }
+
+        // Latin output follows the shared per-unit contract instead of the
+        // free-text path below, so both AI providers behave identically.
+        if (targetScript === 'latin') {
+            const romanizer = new GeminiRomanizer(this.settings, {
+                providerName: 'OpenRouter',
+                requestContent: (contents, schema) => this.requestRomanization(contents, schema),
+            });
+            return romanizer.romanize(
+                GeminiService.prepareStructuredInput(originalLyrics), songInfo, targetLang, targetScript
+            );
         }
 
         const { lyricsForApi, reconstructionPlan } = this.prepareLyrics(originalLyrics, targetScript);
@@ -235,6 +249,45 @@ Requirements:
         });
 
         return this.reconstructLyrics(assembledLines, reconstructionPlan, hasAnyChunks);
+    }
+
+    /** OpenRouter request used by the shared per-unit romanizer. */
+    async requestRomanization(contents, schema) {
+        const messages = [
+            {
+                role: 'system',
+                content: 'Transliterate song lyrics phonetically into the requested target script. Do not translate their meaning. '
+                    + 'Return only valid JSON following the requested schema: one reading string per input unit, same order, same count. '
+                    + 'Copy Latin units verbatim. Use this output structure: ' + JSON.stringify(schema),
+            },
+            ...contents.map(({ role, parts }) => ({
+                role: role === 'model' ? 'assistant' : role,
+                content: parts.map(part => part.text || '').join('\n'),
+            })),
+        ];
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                Authorization: 'Bearer ' + this.apiKey,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://github.com/ibratabian17/youlyplus',
+                'X-Title': 'YouLy+'
+            },
+            body: JSON.stringify({
+                model: this.model,
+                messages,
+                response_format: { type: 'json_object' },
+                ...buildLLMThinkingParameters(this.settings, 'openrouter')
+            })
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error('OpenRouter API Error: ' + response.status + ' ' + (errorData.error?.message || response.statusText));
+        }
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (typeof content !== 'string') throw new Error('OpenRouter returned no message content.');
+        return content;
     }
 
     isLineValid(origLine, retLine, targetScript = 'latin') {

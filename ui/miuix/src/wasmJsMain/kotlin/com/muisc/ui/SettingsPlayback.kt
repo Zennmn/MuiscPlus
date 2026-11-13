@@ -216,7 +216,7 @@ fun PlaybackSection(
                     "descHideLatinPronunciation",
                     "Hide phonetic guides when the lyrics already use the Latin alphabet.",
                 ),
-                checked = state.enabled("hidePhoneticDup", false),
+                checked = state.enabled("hidePhoneticDup", true),
                 onCheckedChange = { actions.set("hidePhoneticDup", it.toString()) },
             )
             ToggleSetting(

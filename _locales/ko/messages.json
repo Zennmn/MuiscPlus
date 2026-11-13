@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "발음 가이드를 위해 가사를 이 문자로 변환합니다 (예: 영어를 일본어 가타카나로 변환). 비라틴 문자는 Gemini 또는 OpenRouter가 필요합니다.",
+    "message": "발음 가이드를 위해 가사를 이 문자로 변환합니다 (예: 영어를 일본어 가타카나로 변환). 비라틴 문자는 Gemini, OpenRouter 또는 LLM이 필요합니다.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google 번역은 라틴 문자(로마자) 음역만 지원합니다. 다른 문자를 활성화하려면 음역 제공자로 Gemini 또는 OpenRouter를 선택하세요.",
+    "message": "Google 번역은 라틴 문자(로마자) 음역만 지원합니다. 다른 문자를 활성화하려면 음역 제공자로 Gemini, OpenRouter 또는 LLM을 선택하세요.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "고급 프롬프트 설정 (Gemini / OpenRouter)",
+    "message": "고급 프롬프트 설정 (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Gemini/OpenRouter 발음 가이드 생성에 사용자 정의 프롬프트를 사용합니다.",
+    "message": "AI 발음 가이드 생성에 사용자 정의 프롬프트를 사용합니다.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

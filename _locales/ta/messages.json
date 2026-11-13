@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "உச்சரிப்பு வழிகாட்டிகளுக்காக பாடல் வரிகளை இந்த எழுத்துமுறைக்கு மாற்றவும் (எ.கா., ஆங்கிலத்திலிருந்து ஜப்பானிய கடகானா). லத்தீன் அல்லாத இலக்குகளுக்கு Gemini அல்லது OpenRouter தேவை.",
+    "message": "உச்சரிப்பு வழிகாட்டிகளுக்காக பாடல் வரிகளை இந்த எழுத்துமுறைக்கு மாற்றவும் (எ.கா., ஆங்கிலத்திலிருந்து ஜப்பானிய கடகானா). லத்தீன் அல்லாத இலக்குகளுக்கு Gemini / OpenRouter / LLM தேவை.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate லத்தீன் (ரோமாஜி) எழுத்துப்பெயர்ப்பை மட்டுமே ஆதரிக்கிறது. பிற எழுத்துமுறைகளை இயக்க எழுத்துப்பெயர்ப்பு வழங்குநராக Gemini அல்லது OpenRouter ஐத் தேர்ந்தெடுக்கவும்.",
+    "message": "Google Translate லத்தீன் (ரோமாஜி) எழுத்துப்பெயர்ப்பை மட்டுமே ஆதரிக்கிறது. பிற எழுத்துமுறைகளை இயக்க எழுத்துப்பெயர்ப்பு வழங்குநராக Gemini / OpenRouter / LLM ஐத் தேர்ந்தெடுக்கவும்.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "மேம்பட்ட ப்ராம்ட் அமைப்புகள் (Gemini / OpenRouter)",
+    "message": "மேம்பட்ட ப்ராம்ட் அமைப்புகள் (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Gemini/OpenRouter ரோமானைசேஷனுக்கு தனிப்பயன் ப்ராம்ட்களைப் பயன்படுத்தவும்.",
+    "message": "AI ரோமானைசேஷனுக்கு தனிப்பயன் ப்ராம்ட்களைப் பயன்படுத்தவும்.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

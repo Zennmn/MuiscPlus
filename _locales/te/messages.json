@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "ఉచ్చారణ మార్గదర్శకాల కోసం సాహిత్యాన్ని ఈ లిపిలోకి మార్చండి (ఉదా. ఆంగ్లం నుండి జపనీస్ కటకానా). లాటిన్ కాని లక్ష్యాలకు Gemini లేదా OpenRouter అవసరం.",
+    "message": "ఉచ్చారణ మార్గదర్శకాల కోసం సాహిత్యాన్ని ఈ లిపిలోకి మార్చండి (ఉదా. ఆంగ్లం నుండి జపనీస్ కటకానా). లాటిన్ కాని లక్ష్యాలకు Gemini / OpenRouter / LLM అవసరం.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate లాటిన్ (రోమాజీ) లిప్యంతరీకరణను మాత్రమే మద్దతు ఇస్తుంది. ఇతర లిపులను ప్రారంభించడానికి లిప్యంతరీకరణ ప్రదాతగా Gemini లేదా OpenRouter ని ఎంచుకోండి.",
+    "message": "Google Translate లాటిన్ (రోమాజీ) లిప్యంతరీకరణను మాత్రమే మద్దతు ఇస్తుంది. ఇతర లిపులను ప్రారంభించడానికి లిప్యంతరీకరణ ప్రదాతగా Gemini / OpenRouter / LLM ని ఎంచుకోండి.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "అధునాతన ప్రాంప్ట్ సెట్టింగ్‌లు (Gemini / OpenRouter)",
+    "message": "అధునాతన ప్రాంప్ట్ సెట్టింగ్‌లు (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Gemini/OpenRouter రోమనైజేషన్ కోసం కస్టమ్ ప్రాంప్ట్‌లను ఉపయోగించండి.",
+    "message": "AI రోమనైజేషన్ కోసం కస్టమ్ ప్రాంప్ట్‌లను ఉపయోగించండి.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

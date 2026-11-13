@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "Songtexte zur Aussprachehilfe in diese Schrift konvertieren (z. B. Englisch in japanisches Katakana). Nicht-lateinische Schriften erfordern Gemini oder OpenRouter.",
+    "message": "Songtexte zur Aussprachehilfe in diese Schrift konvertieren (z. B. Englisch in japanisches Katakana). Nicht-lateinische Schriften erfordern Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google Translate unterstützt nur die lateinische (Romaji) Transliteration. Wählen Sie Gemini oder OpenRouter als Anbieter, um andere Schriften zu aktivieren.",
+    "message": "Google Translate unterstützt nur die lateinische (Romaji) Transliteration. Wählen Sie Gemini / OpenRouter / LLM als Anbieter, um andere Schriften zu aktivieren.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "Erweiterte Prompt-Einstellungen (Gemini / OpenRouter)",
+    "message": "Erweiterte Prompt-Einstellungen (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "Verwenden Sie benutzerdefinierte Prompts für die Gemini/OpenRouter-Romanisierung.",
+    "message": "Verwenden Sie benutzerdefinierte Prompts für die AI-Romanisierung.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

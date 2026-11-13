@@ -461,7 +461,7 @@ function applySettingDependencies(values) {
     }
 
     if (
-        !['gemini', 'openrouter'].includes(next.romanizationProvider)
+        !['gemini', 'openrouter', 'customllm'].includes(next.romanizationProvider)
         && next.transliterationTargetScript
         && next.transliterationTargetScript !== 'latin'
     ) {

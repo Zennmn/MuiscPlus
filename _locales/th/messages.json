@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "แปลงเนื้อเพลงเป็นอักษรนี้เพื่อเป็นแนวทางการออกเสียง (เช่น อังกฤษเป็นคาตาคานะญี่ปุ่น) เป้าหมายที่ไม่ใช่ละตินต้องใช้ Gemini หรือ OpenRouter",
+    "message": "แปลงเนื้อเพลงเป็นอักษรนี้เพื่อเป็นแนวทางการออกเสียง (เช่น อังกฤษเป็นคาตาคานะญี่ปุ่น) เป้าหมายที่ไม่ใช่ละตินต้องใช้ Gemini / OpenRouter / LLM",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "Google แปลภาษารองรับเฉพาะการทับศัพท์ภาษาละติน (โรมาจิ) ให้เลือก Gemini หรือ OpenRouter เป็นผู้ให้บริการถอดเสียงเพื่อเปิดใช้อักษรอื่น",
+    "message": "Google แปลภาษารองรับเฉพาะการทับศัพท์ภาษาละติน (โรมาจิ) ให้เลือก Gemini / OpenRouter / LLM เป็นผู้ให้บริการถอดเสียงเพื่อเปิดใช้อักษรอื่น",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "การตั้งค่า Prompt ขั้นสูง (Gemini / OpenRouter)",
+    "message": "การตั้งค่า Prompt ขั้นสูง (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "ใช้ prompt ที่กำหนดเองสำหรับการเขียนคำอ่าน Gemini/OpenRouter",
+    "message": "ใช้ prompt ที่กำหนดเองสำหรับการเขียนคำอ่าน AI",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

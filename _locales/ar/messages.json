@@ -229,7 +229,7 @@
     "message": "Thinking mode"
   },
   "descLLMThinkingMode": {
-    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase translation time."
+    "message": "Only applies to DeepSeek-compatible endpoints and OpenRouter models that support thinking. Enabling it may increase response time."
   },
   "labelLLMThinkingEffort": {
     "message": "Thinking effort"
@@ -295,11 +295,11 @@
     "description": "Dropdown label"
   },
   "descTransliterationTarget": {
-    "message": "تحويل كلمات الأغاني إلى هذا النظام للمساعدة في النطق (مثل الإنجليزية إلى الكاتاكانا اليابانية). تتطلب الأنظمة غير اللاتينية استخدام Gemini أو OpenRouter.",
+    "message": "تحويل كلمات الأغاني إلى هذا النظام للمساعدة في النطق (مثل الإنجليزية إلى الكاتاكانا اليابانية). تتطلب الأنظمة غير اللاتينية استخدام Gemini / OpenRouter / LLM.",
     "description": "Description for transliteration target script"
   },
   "noteTransliterationTargetDisabled": {
-    "message": "يدعم Google Translate النقل الصوتي اللاتيني (روماجي) فقط. اختر Gemini أو OpenRouter كمزود للنقل الصوتي لتمكين الأنظمة الأخرى.",
+    "message": "يدعم Google Translate النقل الصوتي اللاتيني (روماجي) فقط. اختر Gemini / OpenRouter / LLM كمزود للنقل الصوتي لتمكين الأنظمة الأخرى.",
     "description": "Note shown when the transliteration target script is disabled under non-AI providers"
   },
   "optionLatin": {
@@ -375,7 +375,7 @@
     "description": "Option in target language dropdown"
   },
   "categoryAdvancedPrompting": {
-    "message": "إعدادات الأوامر المتقدمة (Gemini / OpenRouter)",
+    "message": "إعدادات الأوامر المتقدمة (AI)",
     "description": "Category title"
   },
   "settingOverrideAIPrompt": {
@@ -399,7 +399,7 @@
     "description": "Toggle label"
   },
   "descOverrideRomanizePrompt": {
-    "message": "استخدم أوامر مخصصة لرومنة Gemini/OpenRouter.",
+    "message": "استخدم أوامر مخصصة لرومنة AI.",
     "description": "Description"
   },
   "labelCustomRomanizePrompt": {

@@ -35,7 +35,7 @@ const ENUM_SETTINGS = {
     translationProvider: new Set(['google', 'gemini', 'openrouter', 'customllm', 'deepl', 'deepl-keyless']),
     llmThinkingFormat: LLM_THINKING_FORMATS,
     llmThinkingEffort: LLM_THINKING_EFFORTS,
-    romanizationProvider: new Set(['offline', 'google', 'gemini', 'openrouter']),
+    romanizationProvider: new Set(['offline', 'google', 'gemini', 'openrouter', 'customllm']),
     transliterationTargetScript: new Set(['latin', 'japanese', 'korean', 'cyrillic', 'devanagari', 'arabic', 'hebrew', 'greek', 'thai'])
 };
 
