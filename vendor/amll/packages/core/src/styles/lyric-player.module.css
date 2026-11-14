@@ -93,9 +93,14 @@
 
 	.romanWord {
 		display: flex;
-		padding-inline-end: 0.3em;
+		justify-content: center;
+		padding-inline: 0.15em;
 		font-size: 0.5em;
 		line-height: 1em;
+	}
+
+	.romanCentered {
+		text-align: center;
 	}
 
 	.rubyWord {

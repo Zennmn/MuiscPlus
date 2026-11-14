@@ -4,7 +4,11 @@ import { LyricLineBase } from "#lyric/base/line.ts";
 import styles from "#styles/lyric-player.module.css";
 import { clampPositive } from "#utils/clamp.ts";
 import { isCJK } from "#utils/is-cjk.ts";
-import { appendTextWithAutospace, LineBalancer } from "#utils/line-balancer.ts";
+import {
+	appendTextWithAutospace,
+	getMeasurementContext,
+	LineBalancer,
+} from "#utils/line-balancer.ts";
 import { chunkAndSplitLyricWords } from "#utils/lyric-split-words.ts";
 import {
 	getTextAutospaceOffsets,
@@ -21,6 +25,44 @@ import {
 } from "./animation/index.ts";
 import { LineBrightness } from "./line-brightness.ts";
 
+// 标点不属于“文字”。只按文字对齐时，首尾标点都要从参考宽度里剔除，
+// 句读、括号、！？：； 与省略号一视同仁。
+const LEADING_PUNCTUATION_RE =
+	/^[\u2025\u2026\u3001\u3002\u300C-\u3011\u3014\u3017\uFF01\uFF08\uFF09\uFF0C\uFF0E\uFF1A\uFF1B\uFF1F\uFF3B\uFF3D\uFF5B\uFF5D]+/;
+const TRAILING_PUNCTUATION_RE =
+	/[\u2025\u2026\u3001\u3002\u300C-\u3011\u3014\u3017\uFF01\uFF08\uFF09\uFF0C\uFF0E\uFF1A\uFF1B\uFF1F\uFF3B\uFF3D\uFF5B\uFF5D]+$/;
+
+/**
+ * 只取出首尾标点。整段都是标点时没有“文字”，两侧都不参与计算，
+ * 否则同一个符号会同时被首、尾两条规则命中。
+ */
+function edgePunctuation(text: string): { leading: string; trailing: string } {
+	if (!/[\p{L}\p{N}]/u.test(text)) return { leading: "", trailing: "" };
+	return {
+		leading: text.match(LEADING_PUNCTUATION_RE)?.[0] ?? "",
+		trailing: text.match(TRAILING_PUNCTUATION_RE)?.[0] ?? "",
+	};
+}
+
+/**
+ * 用元素当前的字体实测标点推进宽度，而不是假设全角标点就是 1em。
+ * 英文标点、自定义字体、音译自身的半号字都能得到真实宽度。
+ */
+function punctuationWidth(
+	style: CSSStyleDeclaration,
+	text: string,
+): number {
+	if (!text) return 0;
+	const ctx = getMeasurementContext();
+	if (!ctx) return 0;
+	ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+	if ("letterSpacing" in ctx) {
+		ctx.letterSpacing =
+			style.letterSpacing !== "normal" ? style.letterSpacing : "0px";
+	}
+	return ctx.measureText(text).width;
+}
+
 interface RealWord extends LyricWord {
 	mainElement: HTMLSpanElement;
 	subElements: HTMLSpanElement[];
@@ -29,6 +71,8 @@ interface RealWord extends LyricWord {
 	height: number;
 	padding: number;
 	shouldEmphasize: boolean;
+	/** 该词的音译元素，布局完成后按实测标点宽度对齐到文字中心 */
+	romanElement?: HTMLSpanElement;
 }
 
 export class LyricLineEl extends LyricLineBase {
@@ -300,6 +344,8 @@ export class LyricLineEl extends LyricLineBase {
 		const mainWordEl = document.createElement("span");
 		const subElements: HTMLSpanElement[] = [];
 		const romanWord = word.romanWord?.trim() ?? "";
+		const displayWord = word.word;
+		let romanElement: HTMLSpanElement | undefined;
 		const wordContainer = this.lineHasRubyWords
 			? document.createElement("span")
 			: mainWordEl;
@@ -325,8 +371,6 @@ export class LyricLineEl extends LyricLineBase {
 			mainWordEl.appendChild(rubyWordEl);
 			mainWordEl.appendChild(wordContainer);
 		}
-
-		const displayWord = word.word;
 
 		if (shouldEmphasize) {
 			mainWordEl.classList.add(styles.emphasize);
@@ -369,12 +413,18 @@ export class LyricLineEl extends LyricLineBase {
 			romanWordEl.textContent = romanWord.length > 0 ? romanWord : "\u00A0";
 			romanWordEl.classList.add(styles.romanWord);
 			wordContainer.appendChild(romanWordEl);
+			// 原文与音译共用一个容器，容器宽度取两者较宽者；
+			// 容器内居中后，较窄的一段向中间靠，两者水平中心对齐。
+			wordContainer.classList.add(styles.romanCentered);
+			// 对齐要等布局完成才能读到当前字体的真实标点宽度，见 alignRomanWords。
+			romanElement = romanWord.length > 0 ? romanWordEl : undefined;
 		}
 
 		const realWord: RealWord = {
 			...word,
 			mainElement: mainWordEl,
 			subElements: subElements,
+			romanElement,
 			elementAnimations: shouldEmphasize
 				? []
 				: [
@@ -551,6 +601,38 @@ export class LyricLineEl extends LyricLineBase {
 			}
 		}
 	}
+
+	/**
+	 * 把音译挪到原文“文字”的中心。两侧都按各自实际字体实测首尾标点的推进
+	 * 宽度，因此英文标点、自定义字体、音译自带标点都能得到真实偏移。
+	 * 只写相对定位，不参与排版，容器宽度与逐词遮罩的几何都不变。
+	 */
+	private alignRomanWords(): void {
+		for (const word of this.splittedWords) {
+			const roman = word.romanElement;
+			if (!roman) continue;
+
+			const text = word.word.trim();
+			const reading = (word.romanWord ?? "").trim();
+			const textEdges = edgePunctuation(text);
+			const readingEdges = edgePunctuation(reading);
+
+			const textStyle = getComputedStyle(word.mainElement);
+			const romanStyle = getComputedStyle(roman);
+			const shift =
+				(punctuationWidth(textStyle, textEdges.leading) -
+					punctuationWidth(textStyle, textEdges.trailing)) /
+					2 -
+				(punctuationWidth(romanStyle, readingEdges.leading) -
+					punctuationWidth(romanStyle, readingEdges.trailing)) /
+					2;
+
+			const rounded = Math.round(shift * 100) / 100;
+			roman.style.position = rounded === 0 ? "" : "relative";
+			roman.style.left = rounded === 0 ? "" : `${rounded}px`;
+		}
+	}
+
 	/**
 	 * 计算本次遮罩构建全部输入的特征签名
 	 * @param containerWidth 换行平衡所使用的容器可用宽度
@@ -584,6 +666,7 @@ export class LyricLineEl extends LyricLineBase {
 		const mainStyle = getComputedStyle(this.element.children[0]);
 
 		this.measureWords();
+		this.alignRomanWords();
 		// 此时样式与布局已完成解析，读取副本的定位几何数据不会再次引发强制同步布局
 		this.brightness.captureGeometry(mainStyle);
 
