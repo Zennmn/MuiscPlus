@@ -21,7 +21,7 @@
 
 - AMLL 全屏播放器，支持逐字歌词、动态背景和自定义字体。
 - 支持 Apple Music 原生歌词、AMLL TTML DB、LunaBeat 和 AmLyrics，也能导入本地 TTML。
-- Apple Music 没有歌词或只有纯文本时，从网易云音乐、酷狗音乐和汽水音乐找歌词。顺序可以在设置里改。
+- Apple Music 没有歌词或只有纯文本时，从网易云音乐、酷狗音乐、QQ 音乐和汽水音乐找歌词。来源和顺序可在设置里调整。
 - 歌词音译、原生歌词机器翻译、TTML 下载和时间偏移调整。
 
 离线翻译 TTML 见 [TTML 翻译说明](docs/ttml-translation.md)。

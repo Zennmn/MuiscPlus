@@ -4,6 +4,7 @@
 
 import { PROVIDERS } from '../constants.js';
 import '../../lib/defaultSettings.js';
+import { FALLBACK_LYRICS_ORDER_VERSION, migrateFallbackLyricsOrder } from '../../lib/appleLyricsSources.js';
 
 const defaults = globalThis.LYPLUS_DEFAULT_SETTINGS;
 
@@ -30,8 +31,22 @@ export class SettingsManager {
     const settings = await this.get({
       'appleMusicLyricsProviderOrder': defaults.appleMusicLyricsProviderOrder,
       'appleMusicLyricsFallbackOrder': defaults.appleMusicLyricsFallbackOrder,
+      'appleMusicLyricsFallbackOrderVersion': 0,
       'cacheStrategy': defaults.cacheStrategy
     });
+    const version = Number(settings.appleMusicLyricsFallbackOrderVersion);
+    if (!Number.isFinite(version) || version < FALLBACK_LYRICS_ORDER_VERSION) {
+      const appleMusicLyricsFallbackOrder = migrateFallbackLyricsOrder(settings.appleMusicLyricsFallbackOrder).join(',');
+      try {
+        await this.set({
+          appleMusicLyricsFallbackOrder,
+          appleMusicLyricsFallbackOrderVersion: FALLBACK_LYRICS_ORDER_VERSION
+        });
+      } catch (error) {
+        console.warn('YouLy+: could not persist fallback source migration', error);
+      }
+      settings.appleMusicLyricsFallbackOrder = appleMusicLyricsFallbackOrder;
+    }
     settings.cacheStrategy = settings.cacheStrategy === 'none' ? 'none' : 'bounded';
     return settings;
   }

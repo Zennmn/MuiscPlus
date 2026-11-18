@@ -109,7 +109,7 @@ export class LyricsService {
       const settings = await SettingsManager.getLyricsSettings();
       const order = normalizeAppleLyricsOrder(settings.appleMusicLyricsProviderOrder);
       const fallbackOrder = normalizeFallbackLyricsOrder(settings.appleMusicLyricsFallbackOrder);
-      const orderKey = `${order.join(',')}|fallback-v1:${fallbackOrder.join(',')}`;
+      const orderKey = `${order.join(',')}|fallback-v2:${fallbackOrder.join(',')}`;
       const sourceOptions = { cacheResults: settings.cacheStrategy !== 'none', fallbackOrder };
       const preferenceKey = `lyplusApplePlayerProvider_${songInfo.appleId}`;
       if (resetToAuto) await SettingsManager.set({ [preferenceKey]: 'auto' });
@@ -171,7 +171,7 @@ export class LyricsService {
           // A failed validation returns the usable cached lyrics; it never expires by age.
           lyrics ||= !selected && FALLBACK_LYRICS_ORDER.includes(cachedProvider)
             ? cached.lyrics
-            : await appleMusicLyrics.revalidate(songInfo, cached.lyrics, sourceOptions);
+            : await appleMusicLyrics.revalidate(songInfo, cached.lyrics, { ...sourceOptions, manual: !!selected });
         }
         if (changed()) return this.getAppleMusicLyrics(songInfo, forceReload, provider, options);
       }
@@ -188,7 +188,7 @@ export class LyricsService {
 
       if (!lyrics && selected !== PROVIDERS.LOCAL) {
         lyrics = selected
-          ? await appleMusicLyrics.provider(selected, songInfo, sourceForceReload, sourceOptions)
+          ? await appleMusicLyrics.provider(selected, songInfo, sourceForceReload, { ...sourceOptions, manual: true })
           : await appleMusicLyrics.resolve(songInfo, sourceForceReload, order, sourceOptions);
       }
 

@@ -12,6 +12,7 @@ import * as callbacks from '../../vendor/amll/packages/react-full/src/states/cal
 import * as config from '../../vendor/amll/packages/react-full/src/states/configAtoms';
 import * as controls from '../../vendor/amll/packages/react-full/src/states/controlsAtoms';
 import { convertLyrics, getPlainLyrics, seekPosition } from './lyricsAdapter.mjs';
+import { filterOpeningCredits } from './openingCredits.mjs';
 import { createPerformanceDiagnostics } from './performanceDiagnostics.mjs';
 import { playerFontFamily } from '../../src/lib/playerFont.js';
 import { createImportedFontLoader } from '../../src/lib/importedPlayerFont.js';
@@ -888,7 +889,8 @@ export function createPlayer(host, options = {}) {
     lastArgs = args;
     offset = Number(userOffsetMs) || 0;
     applySettings({ ...currentSettings, largerTextMode, displayMode });
-    const lines = convertLyrics(lyrics, settings);
+    const visibleLyrics = filterOpeningCredits(lyrics, settings.hideOpeningCredits, songInfo);
+    const lines = convertLyrics(visibleLyrics, settings);
     store.set(data.musicLyricLinesAtom, lines);
     store.set(config.enableLyricTranslationLineAtom, ['translate', 'both'].includes(displayMode));
     store.set(config.enableLyricRomanLineAtom, ['romanize', 'both'].includes(displayMode));
@@ -898,7 +900,7 @@ export function createPlayer(host, options = {}) {
     const feedback = lyrics?.displayFeedback || {};
     patchView({
       status: lyrics?.type === 'None' ? 'plain' : lines.length ? 'ready' : 'empty',
-      plain: lyrics?.type === 'None' ? getPlainLyrics(lyrics, settings) : null,
+      plain: lyrics?.type === 'None' ? getPlainLyrics(visibleLyrics, settings) : null,
       displayMode: settings.appleMusicDisplayMode || displayMode, offset, translating: false, providers: [...providers],
       displayFeedback: {
         translation: feedback.translation || 'hidden',
@@ -1253,9 +1255,9 @@ export function createPlayer(host, options = {}) {
     },
     setTranslationLoading(value) { patchView({ translating: !!value }); },
     showToast: toast,
-    displaySongNotFound() { store.set(data.musicLyricLinesAtom, []); patchView({ status: 'empty' }); },
-    displaySongError() { store.set(data.musicLyricLinesAtom, []); patchView({ status: 'error' }); },
-    cleanupLyrics() { diagnostics.finish('lyrics-reloading'); store.set(data.musicLyricLinesAtom, []); patchView({ status: 'loading' }); },
+    displaySongNotFound() { lastArgs = undefined; store.set(data.musicLyricLinesAtom, []); patchView({ status: 'empty' }); },
+    displaySongError() { lastArgs = undefined; store.set(data.musicLyricLinesAtom, []); patchView({ status: 'error' }); },
+    cleanupLyrics() { lastArgs = undefined; diagnostics.finish('lyrics-reloading'); store.set(data.musicLyricLinesAtom, []); patchView({ status: 'loading' }); },
     dispose() {
       destroyed = true;
       stopPlayerCursorIdle();

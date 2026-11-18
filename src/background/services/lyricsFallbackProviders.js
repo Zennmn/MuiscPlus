@@ -5,7 +5,9 @@
 // LDDC/core/api/lyrics/{ne,kg}.py and LDDC/core/decryptor/eapi.py.
 // Retains LDDC copyright for the adapted request protocol logic.
 
-import { lyricsPrecision, parseFallbackLyrics, rankFallbackCandidates } from '../utils/fallbackLyrics.js';
+import { lyricsPrecision, parseFallbackLyrics } from '../utils/fallbackLyrics.js';
+import { rankTcrrryCandidates } from '../utils/tcrrryLyricsMatch.js';
+import { fetchQqLyrics, searchQqLyricsSongs } from './qqLyricsProvider.js';
 
 const SEARCH_LIMIT = 20;
 const encoder = new TextEncoder();
@@ -54,6 +56,60 @@ function cleanKugouText(value) {
 function lyricFormat(content) {
   if (/(?:^|\n)\s*\[\d+,\d+\].*?<\d+,\d+,\d+>/m.test(content)) return 'krc';
   return /\[\d+:\d{2}(?:[.:]\d+)?\]/.test(content) ? 'lrc' : 'text';
+}
+
+function neteaseLineTrack(content) {
+  if (!hasText(content)) return '';
+  return content.replace(/\r/g, '').split('\n').map(raw => {
+    const line = raw.trim();
+    const wordLine = /^\[(\d+),(\d+)\](.*)$/.exec(line);
+    if (!wordLine) return /^\[\d{1,3}:\d{2}(?:[.:]\d+)?\]/.test(line) ? line : '';
+    const body = wordLine[3].replace(/\(\d+,\d+(?:,\d+)?\)/g, '').trim();
+    if (!hasText(body)) return '';
+    const start = Number(wordLine[1]);
+    const minutes = Math.floor(start / 60000);
+    const seconds = Math.floor(start / 1000) % 60;
+    const milliseconds = start % 1000;
+    const time = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+    return `[${time}]${body}`;
+  }).filter(Boolean).join('\n');
+}
+
+function neteaseTrackFormat(content) {
+  return /^\s*\[\d+,\d+\]/m.test(content) ? 'yrc' : lyricFormat(content);
+}
+
+function neteaseLyricsPayload(data) {
+  const lrc = lyricText(data?.lrc), yrc = lyricText(data?.yrc), klyric = lyricText(data?.klyric);
+  const word = hasText(yrc) ? yrc : hasText(klyric) ? klyric : '';
+  const content = word || lrc;
+  if (!hasText(content)) return null;
+  const translation = lyricText(data?.ytlrc) || lyricText(data?.ytlyric) || lyricText(data?.tlyric);
+  const lineRomanization = (hasText(yrc)
+    ? ['yromalrc', 'romalrc', 'rromalrc'] : ['romalrc', 'yromalrc', 'rromalrc'])
+    .map(key => lyricText(data?.[key])).find(hasText) || '';
+  const wordRomanization = ['yromalrc', 'rromalrc', 'romalrc']
+    .map(key => lyricText(data?.[key])).find(value => neteaseTrackFormat(value) === 'yrc') || '';
+  return {
+    format: hasText(word) ? 'yrc' : lyricFormat(lrc), content,
+    translation, translationFormat: neteaseTrackFormat(translation),
+    romanization: neteaseLineTrack(lineRomanization), wordRomanization,
+    lineContent: hasText(word) ? lrc : '', language: 'zh'
+  };
+}
+
+function mergeNeteaseTracks(primary, other) {
+  if (!other) return primary;
+  const translationSource = primary.translation ? primary : other;
+  return {
+    ...primary,
+    translation: translationSource.translation,
+    translationFormat: translationSource.translationFormat,
+    romanization: primary.romanization || other.romanization,
+    wordRomanization: primary.wordRomanization || other.wordRomanization,
+    lineContent: primary.lineContent || other.lineContent ||
+      (primary.format === 'yrc' && other.format !== 'yrc' ? other.content : '')
+  };
 }
 
 // MD5 is only the upstream EAPI protocol checksum.
@@ -144,27 +200,81 @@ export class LyricsFallbackProviders {
     return data;
   }
 
+  async neteaseDirect(path, params, signal, post = false) {
+    const endpoint = `https://music.163.com${path}`;
+    const url = post ? endpoint : apiURL(endpoint, params);
+    const options = { signal, headers: { Accept: 'application/json' } };
+    if (post) {
+      options.method = 'POST';
+      options.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+      options.body = new URLSearchParams(params).toString();
+    }
+    const data = await this.requestJSON(url, options);
+    apiError('NetEase', data, 'code', [200]);
+    return data;
+  }
+
+  async neteaseSearch(keyword, signal) {
+    const params = { s: keyword, type: 1, limit: SEARCH_LIMIT, offset: 0 };
+    try {
+      const data = await this.neteaseDirect('/api/cloudsearch/pc', params, signal, true);
+      if (Array.isArray(data.result?.songs)) return data;
+    } catch {
+      checkAbort(signal);
+    }
+    return this.eapi('/eapi/cloudsearch/pc', params, signal);
+  }
+
+  async neteaseLyrics(id, songInfo, candidate, signal) {
+    const params = { os: 'pc', id, lv: -1, kv: -1, tv: -1, yv: -1, rv: -1 };
+    let direct = null;
+    let directPrecision = 0;
+    try {
+      const data = await this.neteaseDirect('/api/song/lyric', params, signal);
+      direct = neteaseLyricsPayload(data);
+      directPrecision = lyricsPrecision(await parseFallbackLyrics(direct, songInfo, candidate));
+      if (directPrecision === 3) return direct;
+    } catch {
+      checkAbort(signal);
+    }
+    try {
+      const data = await this.eapi('/eapi/song/lyric/v1', {
+        id, lv: -1, tv: -1, rv: -1, yv: -1, ytv: -1, yrv: -1
+      }, signal);
+      const fallback = neteaseLyricsPayload(data);
+      const fallbackPrecision = lyricsPrecision(await parseFallbackLyrics(fallback, songInfo, candidate));
+      // The requested track format is not proof that the payload has valid word timings.
+      if (fallbackPrecision > directPrecision) return mergeNeteaseTracks(fallback, direct);
+      return directPrecision > 0 ? mergeNeteaseTracks(direct, fallback) : fallback || direct;
+    } catch {
+      checkAbort(signal);
+      return direct;
+    }
+  }
+
   async search(provider, keyword, songInfo = {}, signal) {
     checkAbort(signal);
     if (!hasText(keyword) || keyword.length > 1024) return [];
     let candidates;
     if (provider === 'netease') {
-      const data = await this.eapi('/eapi/cloudsearch/pc', { s: keyword, type: 1, limit: SEARCH_LIMIT, offset: 0 }, signal);
-      candidates = list(data.result?.songs).map(song => ({
+      const data = await this.neteaseSearch(keyword, signal);
+      candidates = list(data.result?.songs).map((song, searchIndex) => ({
         id: numericId(song.id), title: text(song.name), artist: names(song.ar || song.artists),
-        album: text((song.al || song.album)?.name), duration: seconds(song.dt ?? song.duration, true)
+        album: text((song.al || song.album)?.name), duration: seconds(song.dt ?? song.duration, true), searchIndex
       }));
+    } else if (provider === 'qq') {
+      candidates = await searchQqLyricsSongs(this.requestJSON, keyword, signal);
     } else if (provider === 'kugou') {
       const data = await this.requestJSON(apiURL('https://songsearch.kugou.com/song_search_v2', {
         keyword, platform: 'WebFilter', format: 'json', page: '1', pagesize: String(SEARCH_LIMIT),
         userid: '-1', clientver: '', tag: 'em', filter: '2', iscorrection: '1', privilege_filter: '0'
       }), { signal });
       apiError('Kugou', data, 'status', [1]);
-      candidates = list(data.data?.lists).map(song => ({
+      candidates = list(data.data?.lists).map((song, searchIndex) => ({
         id: validHash(song.FileHash || song.SQFileHash || song.HQFileHash),
         title: cleanKugouText(song.SongName),
         artist: cleanKugouText(song.SingerName) || names(song.Singers),
-        album: cleanKugouText(song.AlbumName), duration: seconds(song.Duration),
+        album: cleanKugouText(song.AlbumName), duration: seconds(song.Duration), searchIndex,
         extra: { albumAudioId: idText(song.AlbumAudioId ?? song.album_audio_id) }
       }));
     } else if (provider === 'soda') {
@@ -203,21 +313,16 @@ export class LyricsFallbackProviders {
 
   async lyrics(provider, candidate, songInfo = {}, signal) {
     checkAbort(signal);
+    if (provider === 'qq') return fetchQqLyrics(this.requestJSON, candidate, signal);
     if (provider === 'netease') {
       const id = numericId(candidate?.id);
       if (!id) return null;
-      const data = await this.eapi('/eapi/song/lyric/v1', { id, lv: -1, tv: -1, rv: -1, yv: -1, ytv: -1, yrv: -1 }, signal);
-      const yrc = lyricText(data.yrc), lrc = lyricText(data.lrc);
-      if (!hasText(yrc) && !hasText(lrc)) return null;
-      const payload = {
-        format: hasText(yrc) ? 'yrc' : lyricFormat(lrc), content: hasText(yrc) ? yrc : lrc,
-        translation: lyricText(data.ytlrc) || lyricText(data.tlyric),
-        romanization: lyricText(data.yromalrc) || lyricText(data.romalrc),
-        lineContent: hasText(yrc) ? lrc : '', language: 'zh'
-      };
-      if (hasText(yrc) && hasText(lrc) && !lyricsPrecision(await parseFallbackLyrics(payload, songInfo, candidate))) {
-        return { ...payload, format: lyricFormat(lrc), content: lrc, lineContent: '',
-          translation: lyricText(data.tlyric), romanization: lyricText(data.romalrc) };
+      const payload = await this.neteaseLyrics(id, songInfo, candidate, signal);
+      if (!payload) return null;
+      if (payload.format === 'yrc' && hasText(payload.lineContent)
+        && !lyricsPrecision(await parseFallbackLyrics(payload, songInfo, candidate))) {
+        return { ...payload, format: lyricFormat(payload.lineContent),
+          content: payload.lineContent, lineContent: '' };
       }
       return payload;
     }
@@ -246,10 +351,10 @@ export class LyricsFallbackProviders {
       if (!numericId(item.id) || !hasText(item.accesskey)) return false;
       // Hash establishes the recording; when a lyric candidate supplies metadata,
       // also reject conflicting singers, versions and durations.
-      return !item.song || !item.singer || rankFallbackCandidates(candidate, [{
+      return !item.song || !item.singer || rankTcrrryCandidates(candidate, [{
         title: cleanKugouText(item.song), artist: cleanKugouText(item.singer),
         duration: seconds(item.duration, true)
-      }]).length > 0;
+      }], { allowRankFallback: false }).length > 0;
     });
     for (const item of candidates.slice(0, 3)) {
       checkAbort(signal);

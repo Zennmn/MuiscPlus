@@ -106,7 +106,7 @@ private const val TTML_TRANSLATION_GUIDE =
 
 private val allLyricsSources = listOf("amll", "lunabeat", "amlyrics", NATIVE_LYRICS_SOURCE)
 private val defaultLyricsSources = allLyricsSources
-private val fallbackLyricsSources = listOf("netease", "kugou", "soda")
+private val fallbackLyricsSources = listOf("netease", "kugou", "qq", "soda")
 
 private data class Choice(val value: String, val label: String)
 
@@ -220,6 +220,15 @@ fun PlaybackSection(
                 onCheckedChange = { actions.set("hidePhoneticDup", it.toString()) },
             )
             ToggleSetting(
+                title = tr("settingHideOpeningCredits", "Hide opening credits"),
+                description = tr(
+                    "descHideOpeningCredits",
+                    "Hide credit lines such as lyricists, composers, and producers at the start of the lyrics.",
+                ),
+                checked = state.enabled("hideOpeningCredits", false),
+                onCheckedChange = { actions.set("hideOpeningCredits", it.toString()) },
+            )
+            ToggleSetting(
                 title = tr("settingLightweightMode", "Lightweight mode"),
                 description = tr(
                     "descLightweightMode",
@@ -268,7 +277,7 @@ fun SourcesSection(
         StatusMessage(statusValue(state, "source-order-status", "add-provider-status", "sources", "sourceOrder"))
         LyricsSourceGroup(
             incoming = normalizeLyricsSources(
-                state.value("appleMusicLyricsFallbackOrder", "netease,kugou,soda").split(',').map(String::trim),
+                state.value("appleMusicLyricsFallbackOrder", "netease,kugou,qq,soda").split(',').map(String::trim),
                 fallbackLyricsSources,
                 pinNative = false,
             ),
@@ -1371,6 +1380,7 @@ private fun lyricsSourceName(provider: String, tr: (String, String) -> String): 
     NATIVE_LYRICS_SOURCE -> "Apple Music"
     "netease" -> tr("lyricsSourceNetease", "NetEase Cloud Music")
     "kugou" -> tr("lyricsSourceKugou", "Kugou Music")
+    "qq" -> tr("lyricsSourceQq", "QQ Music")
     "soda" -> tr("lyricsSourceSoda", "Soda Music")
     else -> provider
 }

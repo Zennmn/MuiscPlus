@@ -336,22 +336,22 @@ function fetchAdditionalData(currentSong, effectiveMode, htmlLang, fetchId) {
 
 function detectLyricsProviderFromSource(source) {
   const name = String(source || '').toLowerCase();
-  for (const key of ['amll', 'lunabeat', 'amlyrics', 'local', 'netease', 'kugou', 'soda']) if (name.includes(key)) return key;
+  for (const key of ['amll', 'lunabeat', 'amlyrics', 'local', 'netease', 'kugou', 'qq', 'soda']) if (name.includes(key)) return key;
   return name.includes('apple') ? 'applemusic' : '';
 }
 
 function getLyricsProviderContext(songInfo = lastKnownSongInfo, lyrics = lastBaseLyrics, settings = currentSettings, selectedProvider = userSelectedProvider) {
   const configured = String(settings.appleMusicLyricsProviderOrder || defaultSettings.appleMusicLyricsProviderOrder)
     .split(',').map(key => key.trim()).filter(key => ['amll', 'lunabeat', 'amlyrics'].includes(key));
-  const fallback = String(settings.appleMusicLyricsFallbackOrder ?? defaultSettings.appleMusicLyricsFallbackOrder ?? 'netease,kugou,soda')
-    .split(',').map(key => key.trim()).filter(key => ['netease', 'kugou', 'soda'].includes(key));
+  const fallback = String(settings.appleMusicLyricsFallbackOrder ?? defaultSettings.appleMusicLyricsFallbackOrder ?? 'netease,kugou,qq,soda')
+    .split(',').map(key => key.trim()).filter(key => ['netease', 'kugou', 'qq', 'soda'].includes(key));
   const providerKeys = [...new Set([...configured, 'applemusic', ...fallback])];
   const activeProvider = lyrics?.provider || lyrics?.metadata?.provider
     || detectLyricsProviderFromSource(lyrics?.metadata?.source) || selectedProvider || '';
   if ((activeProvider === 'local' || availableProviders.has('local')) && !providerKeys.includes('local')) providerKeys.unshift('local');
   return {
     providerKeys, activeProvider,
-    providerDisplayNames: { amll: 'AMLL TTML DB', lunabeat: 'LunaBeat', amlyrics: 'AmLyrics', applemusic: 'Apple Music', netease: t('lyricsSourceNetease') || 'NetEase Music', kugou: t('lyricsSourceKugou') || 'Kugou Music', soda: t('lyricsSourceSoda') || 'Qishui Music', local: t('playerLocalLyrics') || 'Local TTML' }
+    providerDisplayNames: { amll: 'AMLL TTML DB', lunabeat: 'LunaBeat', amlyrics: 'AmLyrics', applemusic: 'Apple Music', netease: t('lyricsSourceNetease') || 'NetEase Music', kugou: t('lyricsSourceKugou') || 'Kugou Music', qq: t('lyricsSourceQq') || 'QQ Music', soda: t('lyricsSourceSoda') || 'Qishui Music', local: t('playerLocalLyrics') || 'Local TTML' }
   };
 }
 
@@ -432,7 +432,7 @@ function getProviderDisplayName(provider) {
 
 async function switchLyricsProvider(providerId) {
   const currentSong = activeLyricsSong();
-  if (!currentSong || !['auto', 'local', 'amll', 'lunabeat', 'amlyrics', 'applemusic', 'netease', 'kugou', 'soda'].includes(providerId)) return false;
+  if (!currentSong || !['auto', 'local', 'amll', 'lunabeat', 'amlyrics', 'applemusic', 'netease', 'kugou', 'qq', 'soda'].includes(providerId)) return false;
   const baseId = currentSong.appleId;
   const fetchId = `${baseId}__${++fetchSessionCounter}`;
   currentFetchMediaId = fetchId;

@@ -461,6 +461,14 @@
     "message": "如果歌词已经是拉丁字母，则自动隐藏注音指南。",
     "description": "Description"
   },
+  "settingHideOpeningCredits": {
+    "message": "隐藏开头署名",
+    "description": "Toggle label"
+  },
+  "descHideOpeningCredits": {
+    "message": "隐藏 QQ 音乐和网易云音乐歌词开头的演唱、作词、作曲等署名。",
+    "description": "Description"
+  },
   "descLightweightMode": {
     "message": "减少动画和视觉效果，以在旧设备上获得更好的性能。",
     "description": "Description"
@@ -1366,6 +1374,9 @@
   },
   "lyricsSourceKugou": {
     "message": "酷狗音乐"
+  },
+  "lyricsSourceQq": {
+    "message": "QQ音乐"
   },
   "lyricsSourceSoda": {
     "message": "汽水音乐"

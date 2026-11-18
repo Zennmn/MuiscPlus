@@ -48,10 +48,43 @@ src/background/utils/fallbackLyrics.js use protocol and format references from:
   LDDC/core/api/lyrics/{ne,kg}.py, core/decryptor/eapi.py,
   core/parser/{krc,yrc,lrc}.py and core/{auto_fetch,algorithm}.py.
   Copyright (C) 2024-2025 沉默の金 <cmzj@cmzj.org>.
+- Tcrrry Lyrics Plugin, https://github.com/tcrrry/Tcrrry-Lyrics-Plugin,
+  GNU GPL version 3. Its DirectLyricsRepository.kt and QqQrcDecoder.java
+  were the references for the browser QQ Music and NetEase adapters, candidate
+  scoring, and localized recording lookup.
+  OpeningCreditsPolicy.kt was adapted for the player option that hides opening credits.
+  The upstream project credits Tcrrry's AMPP Lyrics and bbelluga's AM++.
 
 The request protocol and format handling have been adapted for browser APIs.
 The upstream copyright and GPL terms continue to apply to adapted portions;
 the combined extension is distributed under the root AGPL-3.0-only license.
+
+### QQMusicDecoder
+
+The QRC decoder's cipher is derived from QQMusicDecoder by WXRIW,
+https://github.com/WXRIW/QQMusicDecoder, via the Tcrrry port.
+
+MIT License
+
+Copyright (c) 2023 WXRIW
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 The GPL version 3 text is included in docs/licenses/LDDC-GPL-3.0.txt.
 These references do not imply affiliation with or endorsement by the platforms.
 

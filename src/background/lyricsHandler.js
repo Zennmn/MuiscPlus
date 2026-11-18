@@ -4,6 +4,7 @@
 
 import { MessageHandler } from './core/messageHandler.js';
 import { LyricsService } from './core/lyricsService.js';
+import { SettingsManager } from './storage/settings.js';
 
 const pBrowser = typeof browser !== 'undefined'
   ? browser
@@ -14,6 +15,9 @@ const pBrowser = typeof browser !== 'undefined'
 // ==================================================================================================
 
 console.log('Service Worker initialized');
+SettingsManager.getLyricsSettings().catch(error => {
+  console.warn('Service Worker: could not migrate lyrics source settings', error);
+});
 LyricsService.maintainCache();
 
 if (pBrowser?.runtime?.onMessage) {

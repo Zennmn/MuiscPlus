@@ -1,7 +1,7 @@
 // Keep the original AMLL UI in its own document. Apple's document-wide observers
 // must not see every style/animation mutation made by the lyric renderer.
 (function () {
-    const visualKeys = ['lightweight', 'appleMusicAMLLBackground', 'appleMusicAMLLBackgroundRenderer', 'appleMusicDisplayMode', 'appleMusicPlayerFont', 'appleMusicPlayerFontFile', 'largerTextMode', 'wordByWord', 'hidePhoneticDup', 'displayMode'];
+    const visualKeys = ['lightweight', 'appleMusicAMLLBackground', 'appleMusicAMLLBackgroundRenderer', 'appleMusicDisplayMode', 'appleMusicPlayerFont', 'appleMusicPlayerFontFile', 'largerTextMode', 'wordByWord', 'hidePhoneticDup', 'hideOpeningCredits', 'displayMode'];
     const visualSettings = settings => Object.fromEntries(visualKeys.filter(key => settings && key in settings).map(key => [key, settings[key]]));
     const songView = song => Object.fromEntries(['appleId', 'title', 'artist', 'album', 'duration', 'artwork'].filter(key => song && key in song).map(key => [key, song[key]]));
     const isRevision = value => Number.isSafeInteger(value) && value >= 0;

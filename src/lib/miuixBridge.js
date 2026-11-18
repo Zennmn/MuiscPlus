@@ -732,7 +732,7 @@ function runLyricsSourceAction(action, payload) {
     const area = fallback ? 'fallbackSources' : 'sources';
     const operation = action.split('.').pop();
     const provider = typeof payload === 'string' ? payload : payload?.provider;
-    const nameKeys = { netease: 'lyricsSourceNetease', kugou: 'lyricsSourceKugou', soda: 'lyricsSourceSoda' };
+    const nameKeys = { netease: 'lyricsSourceNetease', kugou: 'lyricsSourceKugou', qq: 'lyricsSourceQq', soda: 'lyricsSourceSoda' };
     const providerName = fallback
         ? translate(nameKeys[provider], FALLBACK_LYRICS_NAMES[provider] || String(provider || ''))
         : String(provider || '');

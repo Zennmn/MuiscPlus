@@ -463,6 +463,14 @@
     "message": "Automatically hide phonetic guides if the lyrics are already written in the Latin alphabet.",
     "description": "Description"
   },
+  "settingHideOpeningCredits": {
+    "message": "Hide Opening Credits",
+    "description": "Toggle label"
+  },
+  "descHideOpeningCredits": {
+    "message": "Hide opening credits in lyrics from QQ Music and NetEase Cloud Music.",
+    "description": "Description"
+  },
   "descLightweightMode": {
     "message": "Reduces animations and visual effects for better performance on older devices.",
     "description": "Description"
@@ -1368,6 +1376,9 @@
   },
   "lyricsSourceKugou": {
     "message": "Kugou Music"
+  },
+  "lyricsSourceQq": {
+    "message": "QQ Music"
   },
   "lyricsSourceSoda": {
     "message": "Soda Music"

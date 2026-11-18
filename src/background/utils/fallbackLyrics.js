@@ -11,11 +11,28 @@ const MAX_WORDS = 100000;
 const MAX_TIME = 24 * 60 * 60 * 1000;
 const AUX_WINDOW = 1200;
 const BRIDGE_WINDOW = 12000;
+const TCRRRY_CREDIT_LINE = /^(?:作词|作詞|作曲|编曲|編曲|词|詞|曲|制作人|製作人|混音|母带|录音|演唱|歌手|composer|lyricist|arranger|producer)\s*[:：]/i;
+const TCRRRY_PLACEHOLDER_LYRICS = [
+  /^(?:此|该)?歌曲(?:为)?(?:一首)?(?:没有填词的|无歌词的)?纯音乐请您?欣赏$/,
+  /^纯音乐请您?欣赏$/,
+  /^(?:暂无|暂未匹配到|没有|无)歌词$/,
+  /^歌词暂无$/,
+];
 const KRC_KEY = [0x40, 0x47, 0x61, 0x77, 0x5e, 0x32, 0x74, 0x47, 0x51, 0x36, 0x31, 0x2d, 0xce, 0xd2, 0x6e, 0x69];
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const timed = value => finite(value) && value >= 0 && value <= MAX_TIME;
 const hasText = value => typeof value === 'string' && value.trim().length > 0;
 const normalized = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}\p{M}]/gu, '');
+
+/** Body rows for Tcrrry's candidate validation. Display uses the original rows. */
+export function tcrrryLyricBody(lines) {
+  const meaningful = lines.map(line => line.replace(/^(\[[^\]]+\])+/, '').trim())
+    .filter(line => line && !TCRRRY_CREDIT_LINE.test(line));
+  const body = meaningful.join('').replace(/[\s,，。.!！?？、]/g, '');
+  if (/^(?:null|undefined)$/i.test(body) ||
+      (body.length <= 48 && TCRRRY_PLACEHOLDER_LYRICS.some(pattern => pattern.test(body)))) return [];
+  return meaningful;
+}
 
 /** A type label alone or one full-line placeholder does not establish word timing. */
 export function lyricsPrecision(lyrics) {
@@ -225,7 +242,7 @@ function parseWordFormat(content, format) {
     const start = Number(match[1]), end = start + Number(match[2]), body = match[3];
     if (!timed(start) || !timed(end)) continue;
     const pattern = format === 'krc' ? /(?:\[\d+,\d+\])?<([0-9]+),([0-9]+),[0-9]+>/g
-      : /(?:\[\d+,\d+\])?\(([0-9]+),([0-9]+),[0-9]+\)/g;
+      : /(?:\[\d+,\d+\])?\(([0-9]+),([0-9]+)(?:,[0-9]+)?\)/g;
     const tokens = [...body.matchAll(pattern)];
     const prefix = tokens.length ? body.slice(0, tokens[0].index) : body;
     let valid = tokens.length > 0 && prefix.length === 0;
@@ -339,9 +356,10 @@ function bridgeMatches(lines, bridge) {
   return matched;
 }
 
-function attachAxis(lines, content, field, language, bridge, compact) {
+function attachAxis(lines, content, field, language, bridge, compact, format) {
   if (!hasText(content)) return;
-  const auxiliary = finalize(parseLrc(content, compact).lines, null).filter(line => line.start != null);
+  const parsed = format === 'yrc' ? parseWordFormat(content, 'yrc') : parseLrc(content, compact);
+  const auxiliary = finalize(parsed.lines, null).filter(line => line.start != null);
   if (!auxiliary.length) return;
   const direct = timeMatches(lines, auxiliary);
   const viaBridge = bridge.length ? timeMatches(bridge, auxiliary) : new Map();
@@ -353,6 +371,20 @@ function attachAxis(lines, content, field, language, bridge, compact) {
     if (field === 'translation') line.translation = { text, lang: language || 'und' };
     else line.romanizedText = text;
   });
+}
+
+function attachWordRomanization(lines, content) {
+  if (!hasText(content)) return;
+  const readings = finalize(parseWordFormat(content, 'yrc').lines, null);
+  for (const [index, match] of timeMatches(lines, readings)) {
+    const line = lines[index], reading = readings[match.index];
+    line.romanizedText ||= reading.text;
+    // Keep platform syllable boundaries only when they match the original time ranges.
+    const { words } = line;
+    if (words.length !== reading.words.length || !words.every((word, i) =>
+      word.start === reading.words[i].start && word.end === reading.words[i].end)) continue;
+    words.forEach((word, i) => { word.romanizedText = reading.words[i].text; });
+  }
 }
 
 function attachKrcLanguages(parsed, language) {
@@ -384,7 +416,7 @@ export async function parseFallbackLyrics(payload, songInfo = {}, candidate = {}
     if (!payload || typeof payload.content !== 'string' || !hasText(payload.content)) return null;
     const format = String(payload.format || '').toLowerCase();
     if (!['krc', 'krc-base64', 'yrc', 'lrc', 'text'].includes(format)) return null;
-    for (const field of ['content', 'translation', 'romanization', 'lineContent']) {
+    for (const field of ['content', 'translation', 'romanization', 'lineContent', 'wordRomanization']) {
       if (payload[field] != null && (typeof payload[field] !== 'string'
         || payload[field].length > MAX_CONTENT * (field === 'content' && format === 'krc-base64' ? 1.5 : 1))) return null;
     }
@@ -399,8 +431,11 @@ export async function parseFallbackLyrics(payload, songInfo = {}, candidate = {}
     const duration = Number(songInfo?.duration || candidate?.duration) * 1000;
     const lines = finalize(parsed.lines, duration);
     const bridge = hasText(payload.lineContent) ? finalize(parseLrc(payload.lineContent).lines, duration).filter(line => line.start != null) : [];
-    attachAxis(lines, payload.translation, 'translation', payload.language, bridge, format === 'krc' || format === 'krc-base64');
+    const translationIsWordTimed = payload.translationFormat === 'yrc';
+    attachAxis(lines, payload.translation, 'translation', payload.language, translationIsWordTimed ? [] : bridge,
+      format === 'krc' || format === 'krc-base64', payload.translationFormat);
     attachAxis(lines, payload.romanization, 'romanizedText', '', bridge, false);
+    attachWordRomanization(lines, payload.wordRomanization);
     const data = lines.map(line => ({
       text: line.text, startTime: (line.start ?? 0) / 1000, endTime: (line.end ?? 0) / 1000,
       duration: line.start == null ? 0 : Math.max(0, line.end - line.start) / 1000,
