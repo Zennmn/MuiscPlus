@@ -20,8 +20,6 @@ export interface FloatAnimationOptions {
 	 * 背景歌词行的上浮位移幅度是主歌词行的两倍
 	 */
 	isBG: boolean;
-	/** 目标相对正文的字号比例，用来保持相同的实际位移。 */
-	fontScale?: number;
 }
 
 /**
@@ -39,12 +37,12 @@ export function createFloatAnimation(
 	wordEl: HTMLElement,
 	options: FloatAnimationOptions,
 ): Animation {
-	const { word, lineStartTime, isBG, fontScale = 1 } = options;
+	const { word, lineStartTime, isBG } = options;
 
 	const delay = word.startTime - lineStartTime;
 	const duration = Math.max(1000, word.endTime - word.startTime);
 
-	let up = 0.05 / fontScale;
+	let up = 0.05;
 	if (isBG) {
 		up *= 2;
 	}

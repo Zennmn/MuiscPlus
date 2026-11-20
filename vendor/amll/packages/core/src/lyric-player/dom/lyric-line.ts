@@ -352,6 +352,7 @@ export class LyricLineEl extends LyricLineBase {
 				: [];
 		const sweepFloat = !shouldEmphasize && characters.length > 1;
 		let romanElement: HTMLSpanElement | undefined;
+		let floatElement = mainWordEl;
 		const wordContainer = this.lineHasRubyWords
 			? document.createElement("span")
 			: mainWordEl;
@@ -405,6 +406,7 @@ export class LyricLineEl extends LyricLineBase {
 					this.enableTextAutospace,
 				);
 				wordTextContainer.appendChild(wordEl);
+				if (romanWord) floatElement = wordEl;
 			} else if (romanWord.length === 0) {
 				appendTextWithAutospace(
 					wordTextContainer,
@@ -435,7 +437,7 @@ export class LyricLineEl extends LyricLineBase {
 			elementAnimations: shouldEmphasize || sweepFloat
 				? []
 				: [
-						createFloatAnimation(mainWordEl, {
+						createFloatAnimation(floatElement, {
 							word: floatWord,
 							lineStartTime: this.lyricLine.startTime,
 							isBG: this.lyricLine.isBG,
@@ -739,22 +741,14 @@ export class LyricLineEl extends LyricLineBase {
 			const times = this.maskAnimator.getSweepTimes(word, positions);
 			const duration = (word.endTime - word.startTime) / positions.length;
 			for (const animation of word.elementAnimations) animation.cancel();
-			const floatAt = (element: HTMLSpanElement, index: number, fontScale = 1) => {
+			word.elementAnimations = word.subElements.map((char, index) => {
 				const startTime = times[index] ?? word.startTime + index * duration;
-				return createFloatAnimation(element, {
+				return createFloatAnimation(char, {
 					word: { startTime, endTime: startTime + duration },
 					lineStartTime: this.lyricLine.startTime,
 					isBG: this.lyricLine.isBG,
-					fontScale,
 				});
-			};
-			word.elementAnimations = word.subElements.map((char, index) =>
-				floatAt(char, index),
-			);
-			if (word.romanElement) {
-				// The reading moves with the first character and is rendered at half its font size.
-				word.elementAnimations.push(floatAt(word.romanElement, 0, 0.5));
-			}
+			});
 		}
 		this.brightness.sync(true);
 

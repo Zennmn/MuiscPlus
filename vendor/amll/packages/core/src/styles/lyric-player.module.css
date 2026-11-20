@@ -166,6 +166,11 @@
 			margin-inline-start: calc(-1em + var(--amll-node-autospace));
 		}
 	}
+
+	/* Add a little space above wrapped rows with inline readings. */
+	&:has(.romanWord) > br ~ .emphasizeWrapper {
+		margin-block-start: -0.92em;
+	}
 }
 
 .lyricBgLine {
