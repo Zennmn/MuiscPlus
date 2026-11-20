@@ -49,6 +49,11 @@
 
 	transition: box-shadow 0.25s;
 
+	/* Let the animated shadow extend past the line without changing its layout. */
+	&:has(span.emphasize) {
+		overflow-clip-margin: 0.5em;
+	}
+
 	/* 作为高亮状态的降级兜底方案，若某行已进入高亮态但尚未生成亮度层，仍维持基础的对比度显示 */
 	&.gradientMask {
 		--bright-mask-alpha: 1;
