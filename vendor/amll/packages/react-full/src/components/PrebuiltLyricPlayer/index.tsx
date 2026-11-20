@@ -363,17 +363,24 @@ const PrebuiltCoreLyricPlayer: FC<{
 	bottomLine?: React.ReactNode;
 	optimizeOptions?: OptimizeLyricOptions;
 	lyricTimeOffsetMs?: number;
-}> = ({ alignPosition, alignAnchor, bottomLine, optimizeOptions, lyricTimeOffsetMs = 0 }) => {
+	getLyricFrameTime?: () => number | undefined;
+}> = ({ alignPosition, alignAnchor, bottomLine, optimizeOptions, lyricTimeOffsetMs = 0, getLyricFrameTime }) => {
 	const amllPlayerRef = useRef<LyricPlayerRef>(null);
 	const musicIsPlaying = useAtomValue(musicPlayingAtom);
 	const lyricLines = useAtomValue(musicLyricLinesAtom);
 	const isLyricPageOpened = useAtomValue(isLyricPageOpenedAtom);
 	const store = useStore();
 	const musicPlayingPosition = store.get(musicPlayingPositionAtom);
+	const frameDriven = isLyricPageOpened && !!getLyricFrameTime;
+	const readFrameTime = useCallback(() => {
+		const position = getLyricFrameTime?.();
+		return position === undefined ? undefined : Math.max(0, Math.round(position - lyricTimeOffsetMs));
+	}, [getLyricFrameTime, lyricTimeOffsetMs]);
 
-	// Drive AMLL directly at the incoming media frame cadence. Subscribing through
-	// useAtomValue here would re-render the entire lyric component for every frame.
+	// Keep the push path when the frame loop is off or there is no frame clock.
+	// Neither path needs a React render for each position update.
 	useLayoutEffect(() => {
+		if (frameDriven) return;
 		const syncTime = () => {
 			amllPlayerRef.current?.lyricPlayer?.setCurrentTime(
 				Math.max(0, Math.round(store.get(musicPlayingPositionAtom) - lyricTimeOffsetMs)),
@@ -381,7 +388,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 		};
 		syncTime();
 		return store.sub(musicPlayingPositionAtom, syncTime);
-	}, [store, lyricTimeOffsetMs]);
+	}, [store, lyricTimeOffsetMs, frameDriven]);
 
 	const lyricFontFamily = useAtomValue(lyricFontFamilyAtom);
 	const lyricFontWeight = useAtomValue(lyricFontWeightAtom);
@@ -476,7 +483,8 @@ const PrebuiltCoreLyricPlayer: FC<{
 			disabled={!isLyricPageOpened}
 			alignPosition={alignPosition}
 			alignAnchor={alignAnchor}
-			currentTime={Math.max(0, Math.round(musicPlayingPosition - lyricTimeOffsetMs))}
+			currentTime={frameDriven ? undefined : Math.max(0, Math.round(musicPlayingPosition - lyricTimeOffsetMs))}
+			getFrameTime={frameDriven ? readFrameTime : undefined}
 			lyricLines={processedLyricLines}
 			optimizeOptions={optimizeOptions}
 			enableBlur={enableLyricLineBlurEffect}
@@ -607,6 +615,8 @@ export interface PrebuiltLyricPlayerProps extends HTMLProps<HTMLDivElement> {
 	favoriteButtonSlot?: React.ReactNode;
 	/** Lyrics-only timing correction; progress controls keep the actual media time. */
 	lyricTimeOffsetMs?: number;
+	/** Unadjusted playback position in milliseconds, sampled once per lyric frame. */
+	getLyricFrameTime?: () => number | undefined;
 }
 
 /** 把低频订阅收进背景子树，避免鼓点更新带动整个播放器重渲染。 */
@@ -633,6 +643,7 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 	playlistControls,
 	playlistButtonLabel,
 	lyricTimeOffsetMs,
+	getLyricFrameTime,
 	onPlaylistClick,
 	onAirPlayClick,
 	fullscreenButtonSlot,
@@ -888,6 +899,7 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 						bottomLine={bottomLineSlot}
 						optimizeOptions={optimizeOptions}
 						lyricTimeOffsetMs={lyricTimeOffsetMs}
+						getLyricFrameTime={getLyricFrameTime}
 					/>
 				}
 				hideLyric={hideLyricView}
