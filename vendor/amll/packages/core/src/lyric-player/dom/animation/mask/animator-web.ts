@@ -21,7 +21,7 @@ interface KeyframeConfig {
  * 创建后的动画均处于暂停状态，外部需要根据播放进度进行调度
  */
 export class WebMaskAnimator implements LineMaskAnimator {
-	private readonly animations: Animation[] = [];
+	private readonly animations = new Map<MaskTargetWord, Animation>();
 	private readonly totalFadeDuration: number;
 
 	constructor(
@@ -36,9 +36,43 @@ export class WebMaskAnimator implements LineMaskAnimator {
 		this.buildAnimations();
 	}
 
+	public getSweepTimes(
+		word: MaskTargetWord,
+		positions: readonly number[],
+	): (number | undefined)[] {
+		const effect = this.animations.get(word)?.effect as KeyframeEffect | null | undefined;
+		const frames = effect?.getKeyframes() ?? [];
+		// The gradient is centered in an image of width 2 * maskBox + fadeWidth.
+		const gradientCenter =
+			word.width + word.padding * 2 + (word.height * this.context.wordFadeWidth) / 2;
+		const duration = Math.max(this.totalFadeDuration, 1);
+		return positions.map((x) => {
+			if (!Number.isFinite(x)) return undefined;
+			const target = x - gradientCenter;
+			let previousPosition = Number.NaN;
+			let previousOffset = 0;
+			for (const frame of frames) {
+				const position = Number.parseFloat(String(frame.maskPosition));
+				if (!Number.isFinite(position)) continue;
+				const offset = frame.computedOffset;
+				if (position >= target) {
+					let crossing = offset;
+					if (previousPosition < target) {
+						const progress = (target - previousPosition) / (position - previousPosition);
+						crossing = previousOffset + (offset - previousOffset) * progress;
+					}
+					return this.context.lineStartTime + crossing * duration;
+				}
+				previousPosition = position;
+				previousOffset = offset;
+			}
+			return undefined;
+		});
+	}
+
 	public setCurrentTime(timeRelative: number, isPlaying: boolean): void {
 		const t = Math.min(this.totalFadeDuration, Math.max(0, timeRelative));
-		for (const a of this.animations) {
+		for (const a of this.animations.values()) {
 			a.currentTime = t;
 			a.playbackRate = 1;
 			const endTime = this.getAnimationEndTime(a);
@@ -52,13 +86,13 @@ export class WebMaskAnimator implements LineMaskAnimator {
 	}
 
 	public pause(): void {
-		for (const a of this.animations) {
+		for (const a of this.animations.values()) {
 			a.pause();
 		}
 	}
 
 	public resume(): void {
-		for (const a of this.animations) {
+		for (const a of this.animations.values()) {
 			const endTime = this.getAnimationEndTime(a);
 			const currentTime = Number(a.currentTime ?? 0);
 
@@ -86,7 +120,7 @@ export class WebMaskAnimator implements LineMaskAnimator {
 					fill: "both",
 				});
 				ani.pause();
-				this.animations.push(ani);
+				this.animations.set(word, ani);
 			} catch (err) {
 				console.warn(
 					"应用渐变动画发生错误",
@@ -334,10 +368,10 @@ export class WebMaskAnimator implements LineMaskAnimator {
 	}
 
 	public dispose(): void {
-		for (const a of this.animations) {
+		for (const a of this.animations.values()) {
 			a.cancel();
 		}
-		this.animations.length = 0;
+		this.animations.clear();
 
 		for (const word of this.words) {
 			const wordEl = word.mainElement;

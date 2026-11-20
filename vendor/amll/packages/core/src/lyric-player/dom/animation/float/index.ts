@@ -7,7 +7,7 @@ export interface FloatAnimationOptions {
 	/**
 	 * 当前绑定的歌词单词数据，用于计算动画的时长与绝对起始时间
 	 */
-	word: LyricWord;
+	word: Pick<LyricWord, "startTime" | "endTime">;
 
 	/**
 	 * 当前单词所在歌词行的起始时间（毫秒），用于计算该单词动画的相对延迟时间

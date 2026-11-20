@@ -53,6 +53,8 @@ export interface MaskContext {
  */
 export interface LineMaskAnimator {
 	apply(): void;
+	/** Absolute lyric times when the gradient midpoint reaches each x in the word's mask box. */
+	getSweepTimes(word: MaskTargetWord, positions: readonly number[]): (number | undefined)[];
 	/**
 	 * @param timeRelative 相对于该歌词行起始时间的相对时间
 	 * @param isPlaying 播放器当前是否在播放

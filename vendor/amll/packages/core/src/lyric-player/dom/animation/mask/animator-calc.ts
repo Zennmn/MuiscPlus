@@ -52,6 +52,20 @@ export class CalcMaskAnimator implements LineMaskAnimator {
 		}
 	}
 
+	public getSweepTimes(
+		word: MaskTargetWord,
+		positions: readonly number[],
+	): (number | undefined)[] {
+		const { startTime, endTime, width, padding } = word;
+		const duration = Math.max(Math.abs(endTime - startTime), 1);
+		// In apply(), the initial gradient midpoint is at paddingLeft.
+		return positions.map((x) =>
+			width > 0 && Number.isFinite(x)
+				? startTime + ((x - padding) / width) * duration
+				: undefined,
+		);
+	}
+
 	public setCurrentTime(_timeRelative: number, _isPlaying: boolean): void {}
 	public pause(): void {}
 	public resume(): void {}

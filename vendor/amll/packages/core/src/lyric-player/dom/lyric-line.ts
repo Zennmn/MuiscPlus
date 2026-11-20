@@ -345,6 +345,13 @@ export class LyricLineEl extends LyricLineBase {
 		const subElements: HTMLSpanElement[] = [];
 		const romanWord = word.romanWord?.trim() ?? "";
 		const displayWord = word.word;
+		const trimmedWord = displayWord.trim();
+		// Keep the reading centered over the whole text while lifting its characters separately.
+		const characters =
+			shouldEmphasize || (romanWord && trimmedWord.length > 1 && isCJK(trimmedWord))
+				? Array.from(textGraphemes(trimmedWord))
+				: [];
+		const sweepFloat = !shouldEmphasize && characters.length > 1;
 		let romanElement: HTMLSpanElement | undefined;
 		const wordContainer = this.lineHasRubyWords
 			? document.createElement("span")
@@ -372,22 +379,23 @@ export class LyricLineEl extends LyricLineBase {
 			mainWordEl.appendChild(wordContainer);
 		}
 
-		if (shouldEmphasize) {
-			mainWordEl.classList.add(styles.emphasize);
-			const trimmedWord = displayWord.trim();
-
+		if (shouldEmphasize || sweepFloat) {
+			if (shouldEmphasize) mainWordEl.classList.add(styles.emphasize);
+			// Regular romanized words already have one text wrapper for centering.
+			const textEl = sweepFloat ? document.createElement("span") : wordTextContainer;
 			const offsets = new Set(
 				this.enableTextAutospace ? getTextAutospaceOffsets(trimmedWord) : [],
 			);
-			for (const { segment, index } of textGraphemes(trimmedWord)) {
+			for (const { segment, index } of characters) {
 				const charEl = document.createElement("span");
 				charEl.textContent = segment;
 				if (offsets.has(index)) {
 					charEl.classList.add(styles.textAutospaceBefore);
 				}
 				subElements.push(charEl);
-				wordTextContainer.appendChild(charEl);
+				textEl.appendChild(charEl);
 			}
+			if (sweepFloat) wordTextContainer.appendChild(textEl);
 		} else {
 			if (this.lineHasRomanWords) {
 				const wordEl = document.createElement("span");
@@ -425,7 +433,7 @@ export class LyricLineEl extends LyricLineBase {
 			mainElement: mainWordEl,
 			subElements: subElements,
 			romanElement,
-			elementAnimations: shouldEmphasize
+			elementAnimations: shouldEmphasize || sweepFloat
 				? []
 				: [
 						createFloatAnimation(mainWordEl, {
@@ -667,6 +675,16 @@ export class LyricLineEl extends LyricLineBase {
 
 		this.measureWords();
 		this.alignRomanWords();
+		const sweepTargets = this.splittedWords.flatMap((word) => {
+			if (word.shouldEmphasize || !word.subElements.length) return [];
+			const box = word.mainElement.getBoundingClientRect();
+			// Convert viewport coordinates back to mask pixels, removing line scale.
+			const scale = (word.width + word.padding * 2) / box.width;
+			const positions = word.subElements.map((char) =>
+				Math.round((char.getBoundingClientRect().left - box.left) * scale * 64) / 64,
+			);
+			return [{ word, positions }];
+		});
 		// 此时样式与布局已完成解析，读取副本的定位几何数据不会再次引发强制同步布局
 		this.brightness.captureGeometry(mainStyle);
 
@@ -679,7 +697,9 @@ export class LyricLineEl extends LyricLineBase {
 		);
 
 		const containerWidth = this.balancer?.getContainerWidth(mainStyle) ?? 0;
-		const signature = this.computeMaskSignature(containerWidth, maxEndTime);
+		const signature =
+			this.computeMaskSignature(containerWidth, maxEndTime) +
+			sweepTargets.map(({ positions }) => "|" + positions.join(",")).join("");
 
 		// 若输入未发生变更，则直接复用现有动画。由于销毁并重建逐词动画是该调用路径上性能开销最高的操作，
 		// 且首次显示后的尺寸监听回调所传入的参数与初次完全相同，因此复用机制可避免不必要的重建。
@@ -705,6 +725,19 @@ export class LyricLineEl extends LyricLineBase {
 		});
 
 		this.maskAnimator.apply();
+		for (const { word, positions } of sweepTargets) {
+			const times = this.maskAnimator.getSweepTimes(word, positions);
+			const duration = (word.endTime - word.startTime) / positions.length;
+			for (const animation of word.elementAnimations) animation.cancel();
+			word.elementAnimations = word.subElements.map((char, index) => {
+				const startTime = times[index] ?? word.startTime + index * duration;
+				return createFloatAnimation(char, {
+					word: { startTime, endTime: startTime + duration },
+					lineStartTime: this.lyricLine.startTime,
+					isBG: this.lyricLine.isBG,
+				});
+			});
+		}
 		this.brightness.sync(true);
 
 		if (this.isEnabled) {
