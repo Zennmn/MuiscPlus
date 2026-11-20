@@ -278,6 +278,7 @@ const PrebuiltProgressBar: FC = React.memo(() => {
 	const musicPosition = useAtomValue(musicPlayingPositionAtom);
 	const musicIsPlaying = useAtomValue(musicPlayingAtom);
 	const musicQualityTag = useAtomValue(musicQualityTagAtom);
+	const store = useStore();
 	const onClickAudioQualityTag = useAtomValue(
 		onClickAudioQualityTagAtom,
 	).onEmit;
@@ -301,8 +302,10 @@ const PrebuiltProgressBar: FC = React.memo(() => {
 
 	const handleSeek = useCallback((position: number) => {
 		onSeekPosition?.(position);
-		setManualSeekTrigger({ time: position, timestamp: Date.now() });
-	}, [onSeekPosition, setManualSeekTrigger]);
+		if (store.get(lyricSeekPositionAtom) === null) {
+			setManualSeekTrigger({ time: position, timestamp: Date.now() });
+		}
+	}, [onSeekPosition, setManualSeekTrigger, store]);
 
 	return (
 		<div>
@@ -372,15 +375,28 @@ const PrebuiltCoreLyricPlayer: FC<{
 	const lyricLines = useAtomValue(musicLyricLinesAtom);
 	const isLyricPageOpened = useAtomValue(isLyricPageOpenedAtom);
 	const store = useStore();
-	const lyricPosition = store.get(lyricSeekPositionAtom) ?? store.get(musicPlayingPositionAtom);
+	const seekPosition = useAtomValue(lyricSeekPositionAtom);
+	const lyricPosition = seekPosition ?? store.get(musicPlayingPositionAtom);
 
 	// Drive AMLL directly at the incoming media frame cadence. Subscribing through
 	// useAtomValue here would re-render the entire lyric component for every frame.
 	useLayoutEffect(() => {
-		const syncTime = () => {
-			const position = store.get(lyricSeekPositionAtom) ?? store.get(musicPlayingPositionAtom);
-			amllPlayerRef.current?.lyricPlayer?.setCurrentTime(
+		const syncPlaying = () => {
+			const player = amllPlayerRef.current?.lyricPlayer;
+			const playing = store.get(musicPlayingAtom) && store.get(lyricSeekPositionAtom) === null;
+			if (!player || player.getIsPlaying() === playing) return;
+			if (playing) player.resume();
+			else player.pause();
+		};
+		const syncTime = (isSeek = false) => {
+			const player = amllPlayerRef.current?.lyricPlayer;
+			if (!player) return;
+			const target = store.get(lyricSeekPositionAtom);
+			if (target !== null && player.getIsPlaying()) player.pause();
+			const position = target ?? store.get(musicPlayingPositionAtom);
+			player.setCurrentTime(
 				Math.max(0, Math.round(position - lyricTimeOffsetMs)),
+				isSeek,
 			);
 		};
 		syncTime();
@@ -388,10 +404,17 @@ const PrebuiltCoreLyricPlayer: FC<{
 			// While a seek is pending, stale samples must not rewrite the held target.
 			if (store.get(lyricSeekPositionAtom) === null) syncTime();
 		});
-		const unsubscribeSeek = store.sub(lyricSeekPositionAtom, syncTime);
+		const unsubscribeSeek = store.sub(lyricSeekPositionAtom, () => {
+			// On release the landing line may still be active. Reanchor its mask
+			// to media time before allowing the animation to run again.
+			syncTime(true);
+			syncPlaying();
+		});
+		const unsubscribePlaying = store.sub(musicPlayingAtom, syncPlaying);
 		return () => {
 			unsubscribePosition();
 			unsubscribeSeek();
+			unsubscribePlaying();
 		};
 	}, [store, lyricTimeOffsetMs]);
 
@@ -484,7 +507,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 				} as React.CSSProperties
 			}
 			ref={amllPlayerRef}
-			playing={musicIsPlaying}
+			playing={musicIsPlaying && seekPosition === null}
 			disabled={!isLyricPageOpened}
 			alignPosition={alignPosition}
 			alignAnchor={alignAnchor}

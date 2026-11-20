@@ -600,6 +600,7 @@ export function createPlayer(host, options = {}) {
       target: Math.min(value, store.get(data.musicDurationAtom) / 1000 || value),
       sampledAfter: sampleClock(),
       revision: lastTimelineRevision,
+      landed: false,
       confirmed: false,
     } : null;
     if (seek) {
@@ -879,13 +880,17 @@ export function createPlayer(host, options = {}) {
     lastTimelineRevision = revision;
     applyPosition(next);
     const seek = pendingLyricSeek;
-    if (seek && sample.isSeeking === false && (seek.revision === null || revision > seek.revision)
-      && (seek.sampledAfter === null || sampledAt >= seek.sampledAfter)
-      && Math.abs(raw - seek.target) <= SEEK_POSITION_TOLERANCE_SECONDS) {
-      seek.confirmed = true;
+    if (seek && (seek.revision === null || revision > seek.revision)
+      && (seek.sampledAfter === null || sampledAt >= seek.sampledAfter)) {
+      seek.landed = sample.isSeeking === false
+        && (seek.landed || Math.abs(raw - seek.target) <= SEEK_POSITION_TOLERANCE_SECONDS);
+      // The first sample at the new position can precede resumed audio.
+      // A paused player or the public MusicKit clock cannot report isAdvancing.
+      seek.confirmed = seek.landed && (sample.isPlaying !== true || advancing
+        || (sample.timeSource !== 'media' && sample.isBuffering !== true));
       // A fresh sample can arrive before the command settles; hold the target
       // until the command result (the timer marks that it has returned).
-      if (lyricSeekTimer !== undefined) clearLyricSeekHold();
+      if (seek.confirmed && lyricSeekTimer !== undefined) clearLyricSeekHold();
     }
   }
 
