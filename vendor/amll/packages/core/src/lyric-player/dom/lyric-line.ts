@@ -45,10 +45,9 @@ function edgePunctuation(text: string): { leading: string; trailing: string } {
 }
 
 /**
- * 用元素当前的字体实测标点推进宽度，而不是假设全角标点就是 1em。
- * 英文标点、自定义字体、音译自身的半号字都能得到真实宽度。
+ * 用元素当前的字体测量文字和标点的推进宽度。
  */
-function punctuationWidth(
+function measureTextWidth(
 	style: CSSStyleDeclaration,
 	text: string,
 ): number {
@@ -613,7 +612,7 @@ export class LyricLineEl extends LyricLineBase {
 	/**
 	 * 把音译挪到原文“文字”的中心。两侧都按各自实际字体实测首尾标点的推进
 	 * 宽度，因此英文标点、自定义字体、音译自带标点都能得到真实偏移。
-	 * 只写相对定位，不参与排版，容器宽度与逐词遮罩的几何都不变。
+	 * 位移只使用容器现有的留白，避免音译侵入相邻词，同时不改变排版或遮罩几何。
 	 */
 	private alignRomanWords(): void {
 		for (const word of this.splittedWords) {
@@ -628,16 +627,27 @@ export class LyricLineEl extends LyricLineBase {
 			const textStyle = getComputedStyle(word.mainElement);
 			const romanStyle = getComputedStyle(roman);
 			const shift =
-				(punctuationWidth(textStyle, textEdges.leading) -
-					punctuationWidth(textStyle, textEdges.trailing)) /
+				(measureTextWidth(textStyle, textEdges.leading) -
+					measureTextWidth(textStyle, textEdges.trailing)) /
 					2 -
-				(punctuationWidth(romanStyle, readingEdges.leading) -
-					punctuationWidth(romanStyle, readingEdges.trailing)) /
+				(measureTextWidth(romanStyle, readingEdges.leading) -
+					measureTextWidth(romanStyle, readingEdges.trailing)) /
 					2;
 
-			const rounded = Math.round(shift * 100) / 100;
-			roman.style.position = rounded === 0 ? "" : "relative";
-			roman.style.left = rounded === 0 ? "" : `${rounded}px`;
+			let offset = 0;
+			if (shift !== 0) {
+				const contentWidth =
+					roman.clientWidth -
+					parseFloat(romanStyle.paddingLeft) -
+					parseFloat(romanStyle.paddingRight);
+				const room = Math.max(
+					0,
+					(contentWidth - measureTextWidth(romanStyle, reading)) / 2,
+				);
+				offset = Math.sign(shift) * Math.min(Math.abs(shift), room);
+			}
+			roman.style.position = offset ? "relative" : "";
+			roman.style.left = offset ? `${offset}px` : "";
 		}
 	}
 
@@ -729,14 +739,22 @@ export class LyricLineEl extends LyricLineBase {
 			const times = this.maskAnimator.getSweepTimes(word, positions);
 			const duration = (word.endTime - word.startTime) / positions.length;
 			for (const animation of word.elementAnimations) animation.cancel();
-			word.elementAnimations = word.subElements.map((char, index) => {
+			const floatAt = (element: HTMLSpanElement, index: number, fontScale = 1) => {
 				const startTime = times[index] ?? word.startTime + index * duration;
-				return createFloatAnimation(char, {
+				return createFloatAnimation(element, {
 					word: { startTime, endTime: startTime + duration },
 					lineStartTime: this.lyricLine.startTime,
 					isBG: this.lyricLine.isBG,
+					fontScale,
 				});
-			});
+			};
+			word.elementAnimations = word.subElements.map((char, index) =>
+				floatAt(char, index),
+			);
+			if (word.romanElement) {
+				// The reading moves with the first character and is rendered at half its font size.
+				word.elementAnimations.push(floatAt(word.romanElement, 0, 0.5));
+			}
 		}
 		this.brightness.sync(true);
 

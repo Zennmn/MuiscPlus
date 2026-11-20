@@ -101,8 +101,6 @@ export interface LyricPlayerProps {
 	 * 内部会根据调用间隔和播放进度自动决定如何滚动和显示歌词，所以这个的调用频率越快越准确越好
 	 */
 	currentTime?: number;
-	/** Supplies the lyric position in milliseconds immediately before the existing frame update. */
-	getFrameTime?: () => number | undefined;
 	/**
 	 * 标识本次 {@link currentTime} 变化是否由跳转触发，将强制触发一次重新排版
 	 *
@@ -205,7 +203,6 @@ export const LyricPlayer: ForwardRefExoticComponent<
 			optimizeOptions,
 			lyricLines,
 			currentTime,
-			getFrameTime,
 			isSeeking,
 			wordFadeWidth,
 			linePosXSpringParams,
@@ -223,11 +220,7 @@ export const LyricPlayer: ForwardRefExoticComponent<
 		const [corePlayer, setCorePlayer] = useState<LyricPlayerBase>();
 		const wrapperRef = useRef<HTMLDivElement>(null);
 		const currentTimeRef = useRef(currentTime);
-		const frameTimeSource = useRef(getFrameTime);
 		const prevLyricLinesRef = useRef(lyricLines);
-		useLayoutEffect(() => {
-			frameTimeSource.current = getFrameTime;
-		}, [getFrameTime]);
 
 		useLayoutEffect(() => {
 			const newPlayer = new (lyricPlayer ?? DefaultLyricPlayer)();
@@ -278,11 +271,6 @@ export const LyricPlayer: ForwardRefExoticComponent<
 					if (canceled) return;
 					if (lastTime === -1) {
 						lastTime = time;
-					}
-					const frameTime = frameTimeSource.current?.();
-					if (corePlayer && frameTime !== undefined) {
-						if (frameTime !== corePlayer.getCurrentTime()) corePlayer.setCurrentTime(frameTime);
-						currentTimeRef.current = frameTime;
 					}
 					corePlayer?.update(time - lastTime);
 					lastTime = time;
@@ -348,7 +336,7 @@ export const LyricPlayer: ForwardRefExoticComponent<
 			if (currentTime !== undefined) {
 				corePlayer?.setCurrentTime(currentTime, isSeeking);
 				currentTimeRef.current = currentTime;
-			} else if (!frameTimeSource.current) {
+			} else {
 				corePlayer?.setCurrentTime(0);
 				currentTimeRef.current = 0;
 			}

@@ -2,7 +2,7 @@ import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'reac
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { atom, createStore, Provider, useAtomValue } from 'jotai';
-import { PrebuiltLyricPlayer } from '../../vendor/amll/packages/react-full/src/components/PrebuiltLyricPlayer';
+import { PrebuiltLyricPlayer, lyricSeekPositionAtom } from '../../vendor/amll/packages/react-full/src/components/PrebuiltLyricPlayer';
 import { ToggleIconButton } from '../../vendor/amll/packages/react-full/src/components/ToggleIconButton';
 import PlayIcon from '../../vendor/amll/packages/react-full/src/components/PrebuiltLyricPlayer/icon_play.svg?react';
 import StarIcon from '../../vendor/amll/packages/react-full/src/components/ToggleIconButton/star.svg?react';
@@ -367,9 +367,8 @@ export function createPlayer(host, options = {}) {
   let playback = {};
   let lastSampleSequence = -1;
   let lastTimelineRevision = null;
-  let lyricTimeSample = null;
-  let lastLyricFramePosition = null;
   let pendingLyricSeek = null;
+  let lyricSeekTimer;
   let snapshotRequestAt = -Infinity;
   let snapshotRequestPending = false;
   let diagnosticReport;
@@ -602,26 +601,29 @@ export function createPlayer(host, options = {}) {
       sampledAfter: sampleClock(),
       revision: lastTimelineRevision,
       confirmed: false,
-      expiresAt: Infinity,
     } : null;
     if (seek) {
+      clearTimeout(lyricSeekTimer);
+      lyricSeekTimer = undefined;
       pendingLyricSeek = seek;
-      clearLyricFrameSample();
+      store.set(lyricSeekPositionAtom, Math.round(seek.target * 1000));
       diagnostics.finish('seek');
     }
     try {
       const result = await options.sendCommand?.(name, value);
       if (seek && pendingLyricSeek === seek) {
-        if (seek.confirmed) pendingLyricSeek = null;
+        if (seek.confirmed) clearLyricSeekHold();
         else {
           // The command can succeed before the media reports its new position.
-          seek.expiresAt = performance.now() + SEEK_CONFIRMATION_GRACE_MS;
+          lyricSeekTimer = setTimeout(() => {
+            if (pendingLyricSeek === seek && !seek.confirmed) clearLyricSeekHold();
+          }, SEEK_CONFIRMATION_GRACE_MS);
           requestFreshSample();
         }
       }
       return result;
     } catch (error) {
-      if (seek && pendingLyricSeek === seek) pendingLyricSeek = null;
+      if (seek && pendingLyricSeek === seek) clearLyricSeekHold();
       toast(error?.message || label('playerPlaybackCommandFailed', 'Playback command failed'));
     }
   };
@@ -807,34 +809,11 @@ export function createPlayer(host, options = {}) {
     const origin = Number(performance.timeOrigin), now = Number(performance.now());
     return Number.isFinite(origin) && Number.isFinite(now) ? origin + now : null;
   };
-  const maxSampleAgeMs = 250;
-  const projectedPosition = (raw, age, rate) => raw + Math.min(age, 100) * rate / 1000;
-  function clearLyricFrameSample() {
-    lyricTimeSample = null;
-    lastLyricFramePosition = null;
-  }
-  function readLyricFrameTime() {
-    if (destroyed || !visible || document.hidden) return;
-    if (pendingLyricSeek) {
-      if (performance.now() < pendingLyricSeek.expiresAt) return Math.round(pendingLyricSeek.target * 1000);
-      pendingLyricSeek = null;
-    }
-    if (!lyricTimeSample) return Math.round(position * 1000);
-    const clock = sampleClock();
-    if (clock === null) return Math.round(position * 1000);
-    const { raw, sampledAt, playbackRate } = lyricTimeSample;
-    const age = clock - sampledAt;
-    if (age > maxSampleAgeMs) {
-      requestFreshSample();
-      return;
-    }
-    // Recompute from the source sample, never from the already compensated progress value.
-    let next = Math.max(position, projectedPosition(raw, Math.max(0, age), playbackRate));
-    if (lastLyricFramePosition !== null && next < lastLyricFramePosition && lastLyricFramePosition - next <= 0.12) {
-      next = lastLyricFramePosition;
-    }
-    lastLyricFramePosition = next;
-    return Math.round(next * 1000);
+  function clearLyricSeekHold() {
+    clearTimeout(lyricSeekTimer);
+    lyricSeekTimer = undefined;
+    pendingLyricSeek = null;
+    if (store.get(lyricSeekPositionAtom) !== null) store.set(lyricSeekPositionAtom, null);
   }
   const applyPosition = (seconds) => {
     if (!Number.isFinite(seconds) || destroyed) return;
@@ -845,8 +824,7 @@ export function createPlayer(host, options = {}) {
   function resetTimeBaseline() {
     // The source sequence spans songs; keep its watermark when the song changes.
     lastTimelineRevision = null;
-    pendingLyricSeek = null;
-    clearLyricFrameSample();
+    clearLyricSeekHold();
   }
   function requestFreshSample() {
     if (destroyed || snapshotRequestPending || typeof options.sendCommand !== 'function') return;
@@ -865,7 +843,6 @@ export function createPlayer(host, options = {}) {
   function updateTick(seconds, sample) {
     if (destroyed || !Number.isFinite(seconds)) return;
     if (!sample || typeof sample !== 'object') {
-      clearLyricFrameSample();
       applyPosition(Math.max(0, seconds));
       return;
     }
@@ -889,18 +866,16 @@ export function createPlayer(host, options = {}) {
     const playbackRate = Number.isFinite(rate) && rate > 0 ? rate : 1;
     const advancing = sample.isAdvancing === true && sample.isPlaying === true
       && sample.isSeeking !== true && sample.isBuffering !== true;
-    if (revisionChanged || !advancing) clearLyricFrameSample();
     let next = raw;
-    if (advancing && age !== null && age >= 0 && age <= maxSampleAgeMs) {
-      lyricTimeSample = { raw, sampledAt, playbackRate };
-      next = projectedPosition(raw, age, playbackRate);
+    if (advancing && age !== null && age >= 0 && age <= 250) {
+      next = raw + Math.min(age, 100) * playbackRate / 1000;
       // Hold tiny same-revision backward jitter from changing message age; a real seek changes revision.
       if (!revisionChanged && next < position && position - next <= 0.12) next = position;
-    } else if (age !== null && (age > maxSampleAgeMs || age < -5)) {
+    } else if (age !== null && (age > 250 || age < -5)) {
       // Stale or implausibly future: never move the timeline with this sample.
       requestFreshSample();
       return;
-    } else clearLyricFrameSample();
+    }
     lastTimelineRevision = revision;
     applyPosition(next);
     const seek = pendingLyricSeek;
@@ -908,7 +883,9 @@ export function createPlayer(host, options = {}) {
       && (seek.sampledAfter === null || sampledAt >= seek.sampledAfter)
       && Math.abs(raw - seek.target) <= SEEK_POSITION_TOLERANCE_SECONDS) {
       seek.confirmed = true;
-      if (seek.expiresAt !== Infinity) pendingLyricSeek = null;
+      // A fresh sample can arrive before the command settles; hold the target
+      // until the command result (the timer marks that it has returned).
+      if (lyricSeekTimer !== undefined) clearLyricSeekHold();
     }
   }
 
@@ -1140,7 +1117,6 @@ export function createPlayer(host, options = {}) {
       <PrebuiltLyricPlayer
         className="lyplus-amll-layout"
         lyricTimeOffsetMs={view.offset}
-        getLyricFrameTime={readLyricFrameTime}
         playlistOpened={!!view.queueOpen}
         onPlaylistOpenedChange={opened => opened ? toggleQueue() : closePanels()}
         playlistControls={visiblePanel === 'queue' ? PLAYER_QUEUE_PANEL_ID : undefined}
@@ -1318,7 +1294,6 @@ export function createPlayer(host, options = {}) {
     setVisible(value) {
       visible = !!value;
       if (!visible) {
-        clearLyricFrameSample();
         stopPlayerCursorIdle();
         diagnostics.finish('hidden');
         invalidatePresentation();
@@ -1339,7 +1314,7 @@ export function createPlayer(host, options = {}) {
       clearPresentationPreparation();
       openingArtwork = null;
       window.removeEventListener('resize', onLayoutChange);
-      document.removeEventListener('visibilitychange', clearLyricFrameSample);
+      clearTimeout(lyricSeekTimer);
       coverVideoControllerRef.current?.disable();
       fontLoader.dispose();
       diagnostics.dispose();
@@ -1355,7 +1330,6 @@ export function createPlayer(host, options = {}) {
   if (options.initialSong) api.updateSong(options.initialSong);
   if (options.initialPlayback) api.updatePlayback(options.initialPlayback);
   window.addEventListener('resize', onLayoutChange);
-  document.addEventListener('visibilitychange', clearLyricFrameSample);
   root = createRoot(host, { onUncaughtError: (error) => { console.error('YouLy+ AMLL:', error); options.onFallback?.(); } });
   root.render(<Provider store={store}><PlayerView /></Provider>);
   return api;

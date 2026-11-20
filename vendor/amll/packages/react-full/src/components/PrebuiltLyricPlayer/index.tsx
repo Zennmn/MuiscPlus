@@ -131,6 +131,9 @@ import {
 } from "../../states/dataAtoms";
 import styles from "./index.module.css";
 
+/** 跳转确认前顶住歌词显示的临时位置，单位为毫秒；不影响播放进度。 */
+export const lyricSeekPositionAtom = atom<number | null>(null);
+
 const PrebuiltMusicInfo: FC<{
 	className?: string;
 	style?: React.CSSProperties;
@@ -363,32 +366,34 @@ const PrebuiltCoreLyricPlayer: FC<{
 	bottomLine?: React.ReactNode;
 	optimizeOptions?: OptimizeLyricOptions;
 	lyricTimeOffsetMs?: number;
-	getLyricFrameTime?: () => number | undefined;
-}> = ({ alignPosition, alignAnchor, bottomLine, optimizeOptions, lyricTimeOffsetMs = 0, getLyricFrameTime }) => {
+}> = ({ alignPosition, alignAnchor, bottomLine, optimizeOptions, lyricTimeOffsetMs = 0 }) => {
 	const amllPlayerRef = useRef<LyricPlayerRef>(null);
 	const musicIsPlaying = useAtomValue(musicPlayingAtom);
 	const lyricLines = useAtomValue(musicLyricLinesAtom);
 	const isLyricPageOpened = useAtomValue(isLyricPageOpenedAtom);
 	const store = useStore();
-	const musicPlayingPosition = store.get(musicPlayingPositionAtom);
-	const frameDriven = isLyricPageOpened && !!getLyricFrameTime;
-	const readFrameTime = useCallback(() => {
-		const position = getLyricFrameTime?.();
-		return position === undefined ? undefined : Math.max(0, Math.round(position - lyricTimeOffsetMs));
-	}, [getLyricFrameTime, lyricTimeOffsetMs]);
+	const lyricPosition = store.get(lyricSeekPositionAtom) ?? store.get(musicPlayingPositionAtom);
 
-	// Keep the push path when the frame loop is off or there is no frame clock.
-	// Neither path needs a React render for each position update.
+	// Drive AMLL directly at the incoming media frame cadence. Subscribing through
+	// useAtomValue here would re-render the entire lyric component for every frame.
 	useLayoutEffect(() => {
-		if (frameDriven) return;
 		const syncTime = () => {
+			const position = store.get(lyricSeekPositionAtom) ?? store.get(musicPlayingPositionAtom);
 			amllPlayerRef.current?.lyricPlayer?.setCurrentTime(
-				Math.max(0, Math.round(store.get(musicPlayingPositionAtom) - lyricTimeOffsetMs)),
+				Math.max(0, Math.round(position - lyricTimeOffsetMs)),
 			);
 		};
 		syncTime();
-		return store.sub(musicPlayingPositionAtom, syncTime);
-	}, [store, lyricTimeOffsetMs, frameDriven]);
+		const unsubscribePosition = store.sub(musicPlayingPositionAtom, () => {
+			// While a seek is pending, stale samples must not rewrite the held target.
+			if (store.get(lyricSeekPositionAtom) === null) syncTime();
+		});
+		const unsubscribeSeek = store.sub(lyricSeekPositionAtom, syncTime);
+		return () => {
+			unsubscribePosition();
+			unsubscribeSeek();
+		};
+	}, [store, lyricTimeOffsetMs]);
 
 	const lyricFontFamily = useAtomValue(lyricFontFamilyAtom);
 	const lyricFontWeight = useAtomValue(lyricFontWeightAtom);
@@ -483,8 +488,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 			disabled={!isLyricPageOpened}
 			alignPosition={alignPosition}
 			alignAnchor={alignAnchor}
-			currentTime={frameDriven ? undefined : Math.max(0, Math.round(musicPlayingPosition - lyricTimeOffsetMs))}
-			getFrameTime={frameDriven ? readFrameTime : undefined}
+			currentTime={Math.max(0, Math.round(lyricPosition - lyricTimeOffsetMs))}
 			lyricLines={processedLyricLines}
 			optimizeOptions={optimizeOptions}
 			enableBlur={enableLyricLineBlurEffect}
@@ -615,8 +619,6 @@ export interface PrebuiltLyricPlayerProps extends HTMLProps<HTMLDivElement> {
 	favoriteButtonSlot?: React.ReactNode;
 	/** Lyrics-only timing correction; progress controls keep the actual media time. */
 	lyricTimeOffsetMs?: number;
-	/** Unadjusted playback position in milliseconds, sampled once per lyric frame. */
-	getLyricFrameTime?: () => number | undefined;
 }
 
 /** 把低频订阅收进背景子树，避免鼓点更新带动整个播放器重渲染。 */
@@ -643,7 +645,6 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 	playlistControls,
 	playlistButtonLabel,
 	lyricTimeOffsetMs,
-	getLyricFrameTime,
 	onPlaylistClick,
 	onAirPlayClick,
 	fullscreenButtonSlot,
@@ -899,7 +900,6 @@ export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 						bottomLine={bottomLineSlot}
 						optimizeOptions={optimizeOptions}
 						lyricTimeOffsetMs={lyricTimeOffsetMs}
-						getLyricFrameTime={getLyricFrameTime}
 					/>
 				}
 				hideLyric={hideLyricView}
